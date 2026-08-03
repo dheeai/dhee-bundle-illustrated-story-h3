@@ -1,116 +1,20 @@
 {
-  "_comment": "MiniMax H3 (Hailuo 03) Reference-to-Video, API format. Derived from ComfyUI's stock video_minimax_h3_r2v template with the node ids made readable and three helper nodes removed: ResolutionSelector, ComfyMathExpression and PrimitiveFloat all fed width/height/length, which the comfy.minimax_h3_r2v RUNNER now computes instead (it snaps duration onto H3's 17k+5 frame grid itself and writes width/height/length straight onto R2V). The runner also REBUILDS the R2V node's dynamic reference group: every 'ref_images.ref_image_<N>' key here is discarded and re-created, one per resolved plate, each fed by a LoadImage the runner appends. The single 'h3Ref0' LoadImage below is a placeholder so the graph is readable/valid on its own. NOTE there is no negative conditioning anywhere in this graph on purpose: H3 ref2va is guidance-distilled and runs through BasicGuider, so 'what you do not want' is written as prose in the prompt, not as a negative encode. Models required on the box: minimax_h3_ref2va_pruned_int8_convrot.safetensors (diffusion), qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors (CLIP, type 'minimax'), minimax_h3_video_vae_fp16.safetensors, minimax_h3_audio_vae_fp32.safetensors.",
-
-  "UNET": {
-    "class_type": "UNETLoader",
-    "_meta": { "title": "Load Diffusion Model (H3 ref2va)" },
-    "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-      "weight_dtype": "default"
-    }
-  },
-  "CLIP": {
-    "class_type": "CLIPLoader",
-    "_meta": { "title": "Load CLIP (Qwen3-VL 32B, minimax)" },
-    "inputs": {
-      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "type": "minimax",
-      "device": "default"
-    }
-  },
-  "VVAE": {
-    "class_type": "VAELoader",
-    "_meta": { "title": "Load VAE (video)" },
-    "inputs": { "vae_name": "minimax_h3_video_vae_fp16.safetensors" }
-  },
-  "AVAE": {
-    "class_type": "VAELoader",
-    "_meta": { "title": "Load VAE (audio)" },
-    "inputs": { "vae_name": "minimax_h3_audio_vae_fp32.safetensors" }
-  },
-
-  "PROMPT": {
-    "class_type": "PrimitiveStringMultiline",
-    "_meta": { "title": "Input Text (Prompt)" },
-    "inputs": { "value": "__POS__" }
-  },
-  "h3Ref0": {
-    "class_type": "LoadImage",
-    "_meta": { "title": "Reference 1 (placeholder — runner rebuilds these)" },
-    "inputs": { "image": "example.png" }
-  },
-
-  "R2V": {
-    "class_type": "MiniMaxH3ReferenceToVideo",
-    "_meta": { "title": "MiniMax H3 Reference to Video" },
-    "inputs": {
-      "prompt": ["PROMPT", 0],
-      "width": 1344,
-      "height": 768,
-      "length": 362,
-      "ref_image_size": "match",
-      "clip": ["CLIP", 0],
-      "vae": ["VVAE", 0],
-      "audio_vae": ["AVAE", 0],
-      "ref_images.ref_image_0": ["h3Ref0", 0]
-    }
-  },
-
-  "GUIDER": {
-    "class_type": "BasicGuider",
-    "_meta": { "title": "Basic Guider" },
-    "inputs": { "model": ["UNET", 0], "conditioning": ["R2V", 0] }
-  },
-  "SAMPLER": {
-    "class_type": "KSamplerSelect",
-    "_meta": { "title": "KSamplerSelect" },
-    "inputs": { "sampler_name": "res_multistep" }
-  },
-  "SIGMAS": {
-    "class_type": "BasicScheduler",
-    "_meta": { "title": "BasicScheduler" },
-    "inputs": { "scheduler": "beta", "steps": 20, "denoise": 1, "model": ["UNET", 0] }
-  },
-  "NOISE": {
-    "class_type": "RandomNoise",
-    "_meta": { "title": "RandomNoise" },
-    "inputs": { "noise_seed": 157368968253448 }
-  },
-  "SAMP": {
-    "class_type": "SamplerCustomAdvanced",
-    "_meta": { "title": "SamplerCustomAdvanced" },
-    "inputs": {
-      "noise": ["NOISE", 0],
-      "guider": ["GUIDER", 0],
-      "sampler": ["SAMPLER", 0],
-      "sigmas": ["SIGMAS", 0],
-      "latent_image": ["R2V", 1]
-    }
-  },
-
-  "VDEC": {
-    "class_type": "VAEDecode",
-    "_meta": { "title": "VAE Decode (video)" },
-    "inputs": { "samples": ["SAMP", 0], "vae": ["VVAE", 0] }
-  },
-  "ADEC": {
-    "class_type": "VAEDecodeAudio",
-    "_meta": { "title": "VAE Decode Audio" },
-    "inputs": { "samples": ["SAMP", 0], "vae": ["AVAE", 0] }
-  },
-  "CV": {
-    "class_type": "CreateVideo",
-    "_meta": { "title": "Create Video" },
-    "inputs": { "fps": 24, "bit_depth": 8, "images": ["VDEC", 0], "audio": ["ADEC", 0] }
-  },
-  "SV": {
-    "class_type": "SaveVideo",
-    "_meta": { "title": "Save Video" },
-    "inputs": {
-      "filename_prefix": "h3_scene",
-      "format": "auto",
-      "codec": "auto",
-      "video": ["CV", 0]
-    }
-  }
+  "_comment": "MiniMax H3 ref2va, PRUNED nvfp4 weights + EasyCache. Replaces the pruned_int8_convrot / beta graph as of 2026-08-03 (founder call), adapted verbatim from his own ComfyUI export. Three things changed at once and NONE of them is covered by the calibration table in dhee-cofounder/artifacts/h3-r2v-probe/README.md (which measured int8 + beta): the UNET is now pruned_nvfp4 (founder call 2026-08-03: the pruned nvfp4 build, not the full one -- pruned is the smaller/faster of the two nvfp4 variants on the box, mirroring how the int8 graph used pruned_int8_convrot rather than the unpruned int8), an EasyCache node wraps the model (reuse_threshold 0.3, active 20%-90% of the schedule) and the scheduler is bong_tangent. EasyCache trades fidelity for speed by reusing steps, so if identity or motion degrades against a previously-good render, EasyCache is the first thing to bisect -- raise reuse_threshold toward 0 or delete the CACHE node and point GUIDER/SIGMAS back at UNET. NOTE the runner OVERRIDES BasicScheduler.scheduler from cfg.scheduler, so bong_tangent only takes effect because the bundle node sets it; changing it here alone does nothing. Calibration also showed scheduler choice is free (beta 7.74 vs simple 7.65 s/it) and that cost scales as ~pixels^1.3, so resolution -- not the scheduler -- is the cost dial.",
+  "UNET": { "class_type": "UNETLoader", "inputs": { "unet_name": "minimax_h3_ref2va_pruned_nvfp4.safetensors", "weight_dtype": "default" } },
+  "CACHE": { "class_type": "EasyCache", "inputs": { "reuse_threshold": 0.3, "start_percent": 0.2, "end_percent": 0.9, "verbose": false, "model": ["UNET", 0] } },
+  "CLIP": { "class_type": "CLIPLoader", "inputs": { "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "type": "minimax", "device": "default" } },
+  "VVAE": { "class_type": "VAELoader", "inputs": { "vae_name": "minimax_h3_video_vae_fp16.safetensors" } },
+  "AVAE": { "class_type": "VAELoader", "inputs": { "vae_name": "minimax_h3_audio_vae_fp32.safetensors" } },
+  "PROMPT": { "class_type": "PrimitiveStringMultiline", "inputs": { "value": "__POS__" } },
+  "h3Ref0": { "class_type": "LoadImage", "inputs": { "image": "example.png" } },
+  "R2V": { "class_type": "MiniMaxH3ReferenceToVideo", "inputs": { "prompt": ["PROMPT", 0], "width": 1344, "height": 768, "length": 362, "ref_image_size": "match", "clip": ["CLIP", 0], "vae": ["VVAE", 0], "audio_vae": ["AVAE", 0], "ref_images.ref_image_0": ["h3Ref0", 0] } },
+  "NOISE": { "class_type": "RandomNoise", "inputs": { "noise_seed": 42 } },
+  "GUIDER": { "class_type": "BasicGuider", "inputs": { "model": ["CACHE", 0], "conditioning": ["R2V", 0] } },
+  "SAMPLER": { "class_type": "KSamplerSelect", "inputs": { "sampler_name": "res_multistep" } },
+  "SIGMAS": { "class_type": "BasicScheduler", "inputs": { "scheduler": "bong_tangent", "steps": 20, "denoise": 1, "model": ["CACHE", 0] } },
+  "SAMP": { "class_type": "SamplerCustomAdvanced", "inputs": { "noise": ["NOISE", 0], "guider": ["GUIDER", 0], "sampler": ["SAMPLER", 0], "sigmas": ["SIGMAS", 0], "latent_image": ["R2V", 1] } },
+  "VDEC": { "class_type": "VAEDecode", "inputs": { "samples": ["SAMP", 0], "vae": ["VVAE", 0] } },
+  "ADEC": { "class_type": "VAEDecodeAudio", "inputs": { "samples": ["SAMP", 0], "vae": ["AVAE", 0] } },
+  "CV": { "class_type": "CreateVideo", "inputs": { "fps": 24, "bit_depth": 8, "images": ["VDEC", 0], "audio": ["ADEC", 0] } },
+  "SV": { "class_type": "SaveVideo", "inputs": { "filename_prefix": "h3_scene", "format": "auto", "codec": "auto", "video": ["CV", 0] } }
 }

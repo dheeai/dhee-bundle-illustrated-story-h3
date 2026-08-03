@@ -4,54 +4,25 @@
   "additionalProperties": true,
   "required": [
     "videoPrompt",
+    "shotStructure",
     "references",
     "duration",
-    "cuts",
-    "audio",
-    "avoid",
     "purpose"
   ],
   "properties": {
     "videoPrompt": {
       "type": "string",
-      "minLength": 400,
-      "description": "The COMPLETE, standalone prompt for ONE MiniMax H3 generation, ready to render with no further enhancement. This is NOT one shot — it is a WHOLE SCENE of 5 to 15 seconds containing SEVERAL CUTS, and it must be written as a directed sequence, in this order: (a) one opening line naming the art style, the aspect and the overall look; (b) a TIMECODED SHOT LIST, one block per cut, written literally as '[0-3 seconds] ... [3-7 seconds] ...' covering the whole duration with no gaps and no overlap; each block states shot size, camera height/angle, camera MOVE, what is in frame, and the ACTION AS MOTION (a beginning state and an end state, never a frozen tableau); (c) the TRANSITIONS between cuts written as physical EVENTS, not named effects ('a hard cut on the impact', 'a whip pan that smears the frame') -- H3 responds to described transitions and ignores labelled ones; (d) an AUDIO paragraph -- this model generates synced stereo sound natively, so name the ambient bed, the foley paired to each physical beat, any music, and any dialogue as a SHORT quoted line with a delivery cue; (e) a final DO-NOT paragraph. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number anywhere in this text: the renderer prepends its own '<Picture N>' reference-binding clause built from your `references` array, and a second, contradictory numbering is the fastest way to break identity. Instead, re-describe every visible character/object/location BY APPEARANCE so the prose and the plates agree. Flowing cinematic prose inside each timecode block, not a tag list. HARD LIMIT: keep this under ~6000 characters. It is NOT enforced by this schema on purpose -- a maxLength here makes llama.cpp's JSON-schema-to-GBNF converter emit a grammar with thousands of character repetitions, which it then fails to parse ('Failed to initialize samplers: failed to parse grammar'), so every structured call 400s. The renderer enforces the real ceiling instead: comfy.minimax_h3_r2v trims the composed prompt to H3's ~7000-char window, prose-first, so the reference-binding clause always survives."
+      "minLength": 1800,
+      "description": "The COMPLETE prompt for ONE MiniMax H3 generation, written directly as prose against the SKELETON in the instructions -- reproduce that skeleton's headings verbatim, in order, with a blank line between blocks, replacing each bracketed placeholder with your writing. The blocks are: the style/look line (no heading; ONE OR TWO sentences; each attribute stated once; never any hex colour codes); 'Scene overview:'; the storyboard heading; the TIMECODED blocks written literally as '[0s-3.4s]' and tiling the whole duration with no gaps or overlap; 'Camera:'; 'Lighting:'; 'Audio:'; 'Performance:'; and the closing do-not paragraph. Any spoken line goes ON ITS OWN LINE in double quotes inside the timecode block where it is spoken -- never gathered into the audio paragraph (H3 needs to know WHEN the line lands) and never dropped or paraphrased when the scene plan authored one. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number: the renderer prepends its own '<Picture N>' binding clause built from your references array, and a second contradictory numbering is the fastest way to break identity -- re-describe every visible character, object and location BY APPEARANCE instead. Keep the whole thing under ~6000 characters (deliberately not enforced by maxLength -- see the top-level _comment; comfy.minimax_h3_r2v trims to H3's ~7000-char window, prose-first, so the binding clause always survives)."
     },
-    "cuts": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 6,
-      "description": "The same cut list as structured data -- for the operator's reading and for QA that the timecodes actually tile the duration. It MUST match the '[a-b seconds]' blocks inside videoPrompt exactly. Two to four cuts is the working range for a 15-second scene; one cut is legitimate for a single sustained beat, and more than four inside 15 seconds reads as a montage rather than a scene.",
-      "items": {
-        "type": "object",
-        "required": [
-          "start",
-          "end",
-          "description"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "start": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Seconds from the start of the clip when this cut begins. The first cut MUST start at 0."
-          },
-          "end": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Seconds when this cut ends. MUST equal the next cut's `start`, and the last cut's `end` MUST equal `duration`."
-          },
-          "description": {
-            "type": "string",
-            "minLength": 20,
-            "description": "What this cut shows -- framing, camera move, and the action as motion. One or two sentences."
-          },
-          "transitionOut": {
-            "type": "string",
-            "description": "How this cut hands off to the next, described as a physical event ('cut hard on the door slam', 'whip pan smears left into'). Omit on the final cut."
-          }
-        }
-      }
+    "shotStructure": {
+      "type": "string",
+      "enum": [
+        "continuous_moving",
+        "locked_single",
+        "multi_cut"
+      ],
+      "description": "THE DIRECTORIAL DECISION for this scene, made from the beat -- NOT inherited from how many shots the planner budgeted (that number is a duration split). The planner's shots are BEATS; three beats can be one continuous move.\nThere are THREE values, not two, because 'one continuous take' and 'the camera moves' are separate facts and pretending otherwise produces an incoherent scene -- a take marked continuous with a static camera gets you neither the cut nor any camera work:\n  'continuous_moving' = ONE unbroken take in which the CAMERA TRAVELS and does the work a cut would do -- a half-orbit past a shoulder that reveals the second character, a push-in onto a face, an arc that swaps the background behind someone, a rack focus that hands attention across a room. cameraMove MUST name that travel.\n  'locked_single'     = ONE unbroken take with a DELIBERATELY STILL camera. Legitimate only when the scene is a SINGLE sustained beat with nothing else that must be seen -- a held portrait, a landscape, one gesture. If the scene needs to show more than one thing and the camera will not move, it is not this.\n  'multi_cut'         = two or more shots joined by described cut events.\nCHOOSE 'continuous_moving' when: one location, unbroken time, at most two characters, a single escalating emotional beat, physical continuity matters, or intimacy and unbroken truth are the point and a cut would let the audience off the hook.\nCHOOSE 'multi_cut' when: scale contrast IS the point, time passes, the location changes, an action has distinct impact beats, comedic timing needs the cut, or you are covering an exchange in shot/reverse. TWO CHARACTERS TALKING IS multi_cut BY DEFAULT -- an exchange has to see both faces, and only a camera that TRAVELS between them earns 'continuous_moving' instead.\nCHOOSE 'locked_single' only for a genuine one-beat held shot."
     },
     "references": {
       "type": "array",
@@ -100,24 +71,11 @@
       "maximum": 15,
       "description": "Seconds this scene runs, 5 to 15. H3 renders 5-15s per call and this whole scene is ONE call, so this is the hard budget every cut has to fit inside -- the renderer clamps anything outside it and snaps the result to H3's 17k+5 frame grid at 24fps, so small deviations are normal. Aim at the section's own budget; if the section's beats genuinely cannot fit in 15 seconds, cut the least essential beat rather than overrunning."
     },
-    "audio": {
-      "type": "string",
-      "minLength": 40,
-      "description": "The scene's sound design in one paragraph, for the operator's reading -- it MUST also appear inside videoPrompt. H3 generates synced stereo audio natively, so this is directed as deliberately as the picture: the ambient bed, the specific foley paired to each physical beat, any score (name instrumentation and where the beat lands), and any dialogue as a short quoted line with a delivery cue."
-    },
-    "avoid": {
-      "type": "string",
-      "minLength": 20,
-      "description": "The scene's DO-NOT list in one sentence, for the operator's reading -- it MUST also appear inside videoPrompt. Negative direction is unusually effective on H3, and this graph has NO negative conditioning input (it is guidance-distilled), so the only place a negative can live is the prompt prose. Be specific to THIS scene's failure modes ('no on-screen subtitles or captions, no soft dissolves, no modern clothing, no legible signage') rather than generic quality words."
-    },
     "purpose": {
       "type": "string",
       "minLength": 1,
       "description": "What this scene is FOR in the story -- the single beat it lands."
-    },
-    "styleLine": {
-      "type": "string",
-      "description": "Optional: the opening style/look sentence, repeated here for the operator. It must already be the first line of videoPrompt."
     }
-  }
+  },
+  "description": "Scene video prompt for MiniMax H3. FIVE fields, deliberately. An earlier version carried fifteen -- styleLine, sceneOverview, camera, lighting, audio, performance, avoid, cameraMove, dialogueLines, beats -- each with its own minLength, and ALSO required videoPrompt to be those same blocks concatenated under literal headings. The per-field minLength was all it bought, and it cost the model writing everything TWICE -- which is exactly what broke. On identical input, deepseek-v4-flash wrote excellent individual fields and then a heading-less run-on videoPrompt, while thinkingcap-27b assembled the headings correctly but wrote thin fields: two models, two different divergences, one root cause. So videoPrompt is now authored DIRECTLY as fill-in-the-blanks prose against the fixed skeleton in prompts/scene_video_prompt.md, and only what the RUNNER consumes (references, duration) or what cannot be recovered from prose (shotStructure, purpose) stays structured. `beats` is gone as well: the timecodes are regexable straight out of the prose, which removes the keep-the-array-in-sync failure entirely. NEVER add maxLength, or a multi-heading `pattern`, anywhere in this file -- both make llama.cpp's JSON-schema-to-GBNF converter emit a grammar it cannot parse, and every structured call then 400s with 'Failed to initialize samplers: failed to parse grammar'."
 }

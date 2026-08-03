@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "license": "MIT",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
@@ -23,7 +23,8 @@
       "plan.character_states": ">=0.1.0",
       "ffmpeg.concat": ">=0.1.0",
       "plan.assemble_keyframes": ">=0.4.0",
-      "comfy.minimax_h3_r2v": ">=0.1.0"
+      "comfy.minimax_h3_r2v": ">=0.2.0",
+      "comfy.rtx_vsr": ">=0.1.0"
     },
     "runnerPackages": {
       "plan.story_prepare": "dhee-runner-story-chapters",
@@ -70,8 +71,14 @@
       "label": "Narrator voiceover",
       "control": "select",
       "options": [
-        true,
-        false
+        {
+          "value": true,
+          "label": "Yes — a designed narrator voices narration beats"
+        },
+        {
+          "value": false,
+          "label": "No — characters speak in-scene (default)"
+        }
       ],
       "placeholder": "false (default) = a pure movie: characters speak natively in-scene, non-dialogue beats play on action + ambient sound. true = a designed narrator voices narration-mode beats."
     },
@@ -102,12 +109,51 @@
       "label": "Render resolution",
       "control": "select",
       "options": [
-        "480p",
-        "540p",
-        "720p",
-        "native"
+        {
+          "value": "480p",
+          "label": "480p — fast (832x480, ~3.7x cheaper)"
+        },
+        {
+          "value": "540p",
+          "label": "540p (960x544)"
+        },
+        {
+          "value": "720p",
+          "label": "720p (1280x720)"
+        },
+        {
+          "value": "native",
+          "label": "Native — best quality (1344x768)"
+        }
       ],
       "placeholder": "'native' (1344x768) is H3's own geometry and the best quality. Cost scales as ~pixels^1.3, so '480p' (832x480) renders ~3.7x faster -- use it to iterate on a story, then re-render the final cut at native. Accepts an explicit '<w>x<h>' too."
+    },
+    {
+      "id": "upscale",
+      "kind": "project",
+      "field": "upscale",
+      "default": "1080p",
+      "label": "Upscale pass (after render, before the final cut)",
+      "control": "select",
+      "options": [
+        {
+          "value": "1080p",
+          "label": "1080p — RTX VSR upscale (recommended)"
+        },
+        {
+          "value": "720p",
+          "label": "720p — RTX VSR upscale"
+        },
+        {
+          "value": "1440p",
+          "label": "1440p — RTX VSR upscale"
+        },
+        {
+          "value": "off",
+          "label": "Off — ship at the render resolution"
+        }
+      ],
+      "placeholder": "NVIDIA RTX Video Super Resolution runs on the finished clips, so you can render cheap and finish sharp: a 12.25s 480p scene reached 1080p in ~12s. It is deterministic and fast but NOT generative -- it sharpens detail that survived the render rather than inventing it, so it cannot rebuild a face that was mush at 480p. Presets scale the SHORT edge and preserve aspect. 'off' passes clips straight through."
     }
   ],
   "goal": "final_video",
@@ -1223,7 +1269,7 @@
       "runner": {
         "tool": "comfy.minimax_h3_r2v",
         "config": {
-          "_comment": "One H3 call per SECTION. shotPlanInput lets the runner sum the section's shot durations into the clip length when the authored prompt does not state one; statePlanInput/stateImagesInput give the same per-state plate substitution comfy.ltx_msr does, merged across the section's shots (last state wins) because one render can only hold one plate per character. maxRefs is 9, H3's real limit, against MSR's 5. scheduler 'beta' over the stock template's 'simple' is Comfy's own recommendation for reference-heavy prompts. 1344x768 is H3's native geometry (768 short edge, capped 768x1344, /32). SHEET SPLIT (sheetPanels 4): character_anchor_image and character_state_image are 4-panel multi-view identity SHEETS (1536x864, four 384x864 panels: front full-body, profile, three-quarter, medium close-up) built for LTX MSR. H3 reads a reference as a literal photograph, so handed the sheet it RENDERS IT INTO THE FRAME as several people against a backdrop -- measured in dhee-cofounder/artifacts/h3-r2v-probe cell A, where the bottom ~40% of every frame is a reproduction of the sheet. So the runner crops each sheet and sends panels [0, 3] -- the full-body view and the close-up -- as SEPARATE references, which is what H3's 9 slots exist for. viewsPerCharacter walks down to 1 automatically when a crowded scene would overflow. Do NOT set sheetPanels to 0 here without changing the anchor stage to emit single views. RESOLUTION IS A DELIBERATE COST DECISION (founder call, 2026-08-03): 1344x768 is H3's NATIVE geometry (768 short edge, capped 768x1344) and 2.58x the pixels of the stock ComfyUI template, which sets width/height from a ResolutionSelector at 0.4 megapixels (~832x480). Measured on the 5090: a 5s/124-frame clip is 178s at 1344x768 vs 68s at the template's 0.4MP, and a 15s/362-frame scene runs ~42 s/it, i.e. ~18-20 min, making a 10-section film roughly a 3-hour render. That is accepted, not an oversight: at 480p a full-body character resolves the face to too few pixels and the identity plates stop doing their job. Lower width/height per project if you are iterating on prompts rather than rendering a final cut.",
+          "_comment": "One H3 call per SECTION. shotPlanInput lets the runner sum the section's shot durations into the clip length when the authored prompt does not state one; statePlanInput/stateImagesInput give the same per-state plate substitution comfy.ltx_msr does, merged across the section's shots (last state wins) because one render can only hold one plate per character. maxRefs is 9, H3's real limit, against MSR's 5. scheduler 'beta' over the stock template's 'simple' is Comfy's own recommendation for reference-heavy prompts. 1344x768 is H3's native geometry (768 short edge, capped 768x1344, /32). SHEET SPLIT (sheetPanels 4): character_anchor_image and character_state_image are 4-panel multi-view identity SHEETS (1536x864, four 384x864 panels: front full-body, profile, three-quarter, medium close-up) built for LTX MSR. H3 reads a reference as a literal photograph, so handed the sheet it RENDERS IT INTO THE FRAME as several people against a backdrop -- measured in dhee-cofounder/artifacts/h3-r2v-probe cell A, where the bottom ~40% of every frame is a reproduction of the sheet. So the runner crops each sheet and sends panels [0, 3] -- the full-body view and the close-up -- as SEPARATE references, which is what H3's 9 slots exist for. viewsPerCharacter walks down to 1 automatically when a crowded scene would overflow. Do NOT set sheetPanels to 0 here without changing the anchor stage to emit single views. RESOLUTION IS A DELIBERATE COST DECISION (founder call, 2026-08-03): 1344x768 is H3's NATIVE geometry (768 short edge, capped 768x1344) and 2.58x the pixels of the stock ComfyUI template, which sets width/height from a ResolutionSelector at 0.4 megapixels (~832x480). Measured on the 5090: a 5s/124-frame clip is 178s at 1344x768 vs 68s at the template's 0.4MP, and a 15s/362-frame scene runs ~42 s/it, i.e. ~18-20 min, making a 10-section film roughly a 3-hour render. That is accepted, not an oversight: at 480p a full-body character resolves the face to too few pixels and the identity plates stop doing their job. Lower width/height per project if you are iterating on prompts rather than rendering a final cut. WORKFLOW SWAPPED to the NVFP4 + EasyCache graph (2026-08-03): the diffusion model is now minimax_h3_ref2va_nvfp4_full (native 4-bit on Blackwell -- the box lists nvfp4 in its 'Native ops'), an EasyCache node sits between the UNET and both consumers, and the scheduler is bong_tangent. `scheduler` is set here explicitly because the runner would otherwise overwrite the graph's value with its 'beta' default. EasyCache is the ONLY lever measured to touch H3's dominant cost -- step count -- since SageAttention turned out to be a no-op here (auto and disabled measured 2.01 vs 2.02 s/it, and every explicit kernel fails on this box's broken Triton tcc.exe), int8/nvfp4 already dispatches natively, and there is no reclaimable VRAM. It is also the lever most likely to erode fine identity detail, which is the axis H3 was chosen for, so set easyCache:false to A/B it before trusting it on a film. NONE of nvfp4 / EasyCache / bong_tangent is covered by the int8+beta calibration table in dhee-cofounder/artifacts/h3-r2v-probe/README.md -- that table measured the PRIOR graph, so every number there (per-step timing, the beta-vs-simple free lunch, the pixels^1.3 cost curve) still holds for resolution/scheduler choice but says nothing about this graph's fidelity. Treat a render off this workflow as UNMEASURED against any previously-approved film until re-validated; EasyCache is the first thing to bisect (raise reuse_threshold toward 0, or easyCache:false) if identity or motion looks off against an int8/beta-era render.",
           "outputPath": "assets/videos/scenes/{{item_id}}.mp4",
           "workflowPath": "workflows/minimax_h3_r2v.json",
           "endpoint": "self.local",
@@ -1253,7 +1299,7 @@
           "refImageSize": "match",
           "steps": 20,
           "samplerName": "res_multistep",
-          "scheduler": "beta",
+          "scheduler": "bong_tangent",
           "seed": 42,
           "timeoutMinutes": 45,
           "sheetPanels": 4,
@@ -1264,7 +1310,48 @@
             0,
             3
           ],
-          "viewsPerCharacter": 2
+          "viewsPerCharacter": 2,
+          "easyCache": true,
+          "easyCacheThreshold": 0.3,
+          "easyCacheStart": 0.2,
+          "easyCacheEnd": 0.9
+        }
+      },
+      "displayCapability": "shot.video"
+    },
+    {
+      "id": "scene_upscaled",
+      "displayName": "Scene Upscale (NVIDIA RTX Video Super Resolution)",
+      "kind": "collection",
+      "itemSource": "scenes_plan",
+      "itemKey": "sections",
+      "inputs": [
+        {
+          "from": "scene_clip",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "upscale",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "video",
+        "pattern": "assets/videos/scenes_upscaled/{{item_id}}.mp4"
+      },
+      "runner": {
+        "tool": "comfy.rtx_vsr",
+        "config": {
+          "_comment": "Upscale pass between the render and the final cut, so the film can be rendered CHEAP and finished SHARP. Measured: H3 cost scales as ~pixels^1.3 (a 5s clip is 55s at 832x480 vs 205s at native 1344x768), while RTX VSR took a real 12.25s 480p scene to 1080p in ~12s -- so 480p render + VSR is roughly 4x cheaper end to end than paying for pixels at generation time. RTX VSR is NOT generative though: it sharpens what survived the render and will not rebuild a face that was mush at 480p, which is why `resolution` and `upscale` are SEPARATE project fields rather than one setting. Set upscale 'off' and the runner copies each clip through untouched, so the graph still runs end to end with no rewiring.",
+          "outputPath": "assets/videos/scenes_upscaled/{{item_id}}.mp4",
+          "workflowPath": "workflows/rtx_vsr_video.json",
+          "endpoint": "self.local",
+          "videoInput": "scene_clip",
+          "upscaleInput": "upscale",
+          "target": "1080p",
+          "quality": "ULTRA",
+          "timeoutMinutes": 20
         }
       },
       "displayCapability": "shot.video"
@@ -1275,7 +1362,7 @@
       "kind": "stage",
       "inputs": [
         {
-          "from": "scene_clip",
+          "from": "scene_upscaled",
           "usage": "input",
           "scope": "all"
         }

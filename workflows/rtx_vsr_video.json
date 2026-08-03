@@ -1,0 +1,44 @@
+{
+  "_comment": "NVIDIA RTX Video Super Resolution over a whole video, audio preserved. LoadVideo -> GetVideoComponents splits the clip into frames + audio + fps; RTXVideoSuperResolution upscales the frame batch; CreateVideo reassembles with the ORIGINAL audio and the ORIGINAL fps so nothing drifts; SaveVideo writes it. NOTE resize_type is a COMFY_DYNAMICCOMBO_V3, which API format expresses as the selected key on the input plus DOTTED sub-keys for that key's own fields -- 'scale by multiplier' takes resize_type.scale (FLOAT 1.0-4.0), while 'target dimensions' takes resize_type.width / resize_type.height (INT, step 8) instead. Sending sub-keys belonging to the unselected option is what breaks it. Same dotted-key family as MiniMaxH3ReferenceToVideo's ref_images autogrow group. RTX VSR is a driver/TensorRT feature, not a diffusion model -- there is no checkpoint to load and no sampler, so it is fast and deterministic, but it only runs on an NVIDIA RTX GPU.",
+
+  "LOAD": {
+    "class_type": "LoadVideo",
+    "_meta": { "title": "Load Video (source clip)" },
+    "inputs": { "file": "__VIDEO__" }
+  },
+  "SPLIT": {
+    "class_type": "GetVideoComponents",
+    "_meta": { "title": "Split into frames + audio + fps" },
+    "inputs": { "video": ["LOAD", 0] }
+  },
+  "VSR": {
+    "class_type": "RTXVideoSuperResolution",
+    "_meta": { "title": "NVIDIA RTX Video Super Resolution" },
+    "inputs": {
+      "images": ["SPLIT", 0],
+      "resize_type": "scale by multiplier",
+      "resize_type.scale": 2.0,
+      "quality": "ULTRA"
+    }
+  },
+  "BUILD": {
+    "class_type": "CreateVideo",
+    "_meta": { "title": "Reassemble (original audio + fps)" },
+    "inputs": {
+      "images": ["VSR", 0],
+      "fps": ["SPLIT", 2],
+      "audio": ["SPLIT", 1],
+      "bit_depth": ["SPLIT", 3]
+    }
+  },
+  "SAVE": {
+    "class_type": "SaveVideo",
+    "_meta": { "title": "Save Video" },
+    "inputs": {
+      "filename_prefix": "rtxvsr",
+      "format": "auto",
+      "codec": "auto",
+      "video": ["BUILD", 0]
+    }
+  }
+}

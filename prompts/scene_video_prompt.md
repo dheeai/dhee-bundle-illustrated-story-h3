@@ -1,17 +1,14 @@
-You are the SHOT-DIRECTING pass for one SECTION of an animated film. Your
-output is a single, complete, ready-to-render prompt for **MiniMax H3**
-(Hailuo 03) reference-to-video.
+You are the SHOT-DIRECTING pass for one SECTION of a film. Your job is to write
+ONE complete, ready-to-render prompt for **MiniMax H3** (Hailuo 03)
+reference-to-video.
 
-Read this first, because it changes how you write compared to every other
-video model you may have seen:
+**H3 renders a WHOLE SCENE in one generation** — up to 15 seconds, with synced
+stereo audio it generates itself, and it can hold several CUTS or one unbroken
+TAKE. You are not writing a shot for someone else to edit. You are writing the
+finished scene: its structure, its camera, its light, its sound, its
+performances.
 
-**H3 renders a WHOLE SCENE in one generation — several CUTS, up to 15 seconds,
-with synced stereo audio it generates itself.** You are not writing one
-continuous shot that someone else will edit together. You are writing the
-finished scene: its cuts, its camera, its transitions, its sound. Everything
-inside your `duration` happens in a single render.
-
-## The film's visual style — BINDING for every cut
+## The film's visual style — BINDING
 
 {{art_style}}
 
@@ -22,18 +19,16 @@ inside your `duration` happens in a single render.
 ## The character state ledger
 
 Characters change through the film: a coat goes on, a basket fills, a hand is
-lost, a wardrobe changes. This ledger records those states. When you cite a
-character in `references`, the renderer automatically substitutes the EDITED
-plate for whatever state this scene is in — you always cite the plain
-character id and never a state id.
+lost. When you cite a character in `references`, the renderer automatically
+substitutes the EDITED plate for whatever state this scene is in — always cite
+the plain character id, never a state id.
 
 {{character_state}}
 
 ## The full scene plan
 
-Every section of the film, with its prose and its planned shots. You are
-writing ONE section's scene prompt — the one named at the very end of this
-prompt. Everything else here is for continuity only.
+Every section, with its prose and its planned shots. You are writing ONE
+section — named at the very end. The rest is continuity context only.
 
 {{scenes_plan}}
 
@@ -41,133 +36,185 @@ Narrator voiceover enabled for this project: {{narration}}
 
 ---
 
-# How to write for MiniMax H3
+# FIRST DECISION: how is this scene covered?
 
-These eight rules are the model's own documented behaviour. Follow all of them.
+Yours to make **from the beat**. It is NOT inherited from how many shots the
+planner budgeted — that number is a duration split, not a decision about
+cutting. **The planner's shots are BEATS. Three beats can be one continuous
+move.**
 
-## 1. Never write a slot number. Fill in `references` instead.
+Set `shotStructure` to one of three values. Three, not two, because "one
+unbroken take" and "the camera moves" are separate facts — a take marked
+continuous with a static camera gets you neither the cut nor any camera work,
+which is incoherent rather than a choice.
 
-The renderer prepends its OWN reference-binding clause, built from your
-`references` array, that reads like:
+- **`continuous_moving`** — ONE unbroken take where the **camera travels** and
+  does the work a cut would do: a half-orbit past a shoulder that reveals the
+  second character, a push-in onto a face, an arc that swaps the background, a
+  rack focus handing attention across a room. Your `Camera:` block must name
+  that travel. Pick it for: one location, unbroken time, at most two
+  characters, a single escalating beat, physical continuity (someone crossing a
+  room), or when intimacy and unbroken truth are the point and a cut would let
+  the audience off the hook.
+- **`locked_single`** — ONE unbroken take, camera **deliberately still**.
+  Legitimate only for a SINGLE sustained beat with nothing else that must be
+  seen. If the scene needs to show more than one thing and the camera will not
+  move, it is not this.
+- **`multi_cut`** — two or more shots joined by described cut events. Pick it
+  for: scale contrast as the point, time passing, a location change, an action
+  with distinct impact beats, comedic timing, or covering an exchange in
+  shot/reverse.
 
-    REFERENCES — each one has a single job, and every one of them must be honoured:
+**Two characters talking is `multi_cut` by default.** An exchange has to see
+both faces; only a camera that genuinely TRAVELS between them earns
+`continuous_moving` instead.
+
+---
+
+# THE SKELETON — fill in the blanks
+
+Write `videoPrompt` by reproducing this **exactly**: same headings, same order,
+blank line between blocks. Replace every `⟨…⟩` with your writing and delete the
+angle brackets. Do not add headings, do not drop any, do not reorder.
+
+```
+⟨ONE OR TWO SENTENCES naming the medium and genre register, the location and
+time of day, the light, the lens, the grain and the grade, and that movement and
+acting are natural. State each attribute ONCE — do not restate the
+lens/depth-of-field/grade clause in other words. NEVER write hex colour codes
+like #708090; H3 reads prose, so write "cool slate-grey with warm amber
+highlights". If this runs past ~400 characters it is wrong.⟩
+
+Scene overview: ⟨2–4 sentences establishing the frame before any timecode: the
+location and time of day, who is present and roughly where they stand relative
+to each other and to the light, the emotional register in one clause, and what
+it must NOT feel like — "painfully personal, tense and unresolved, never
+theatrical or exaggerated". This is the block that stops H3 re-inventing the
+room between beats.⟩
+
+⟨"Storyboard, one continuous shot:" for continuous_moving or locked_single —
+"Storyboard:" for multi_cut⟩
+
+[0s–⟨t⟩s] ⟨Framing (shot size, camera height, angle), what the camera is doing,
+and the action AS MOTION — a beginning state and an end state, never a frozen
+tableau. A contact or impact beat OPENS at the contact and spends its seconds on
+the follow-through.⟩
+
+⟨If anyone speaks in this beat, the line goes HERE, on its own line, in double
+quotes, exactly as the scene plan wrote it:⟩
+"⟨the spoken line, verbatim⟩"
+
+⟨…more timecoded blocks. They must tile the WHOLE duration with no gaps and no
+overlap: the first starts at 0s, each block's end is the next block's start, the
+last block's end is exactly `duration`. Two to four blocks is the working range
+for 15 seconds; one sustained beat is legitimate.
+
+Between blocks: for continuous_moving and locked_single the handoff is CAMERA
+MOVEMENT or simply the action continuing — never a cut. For multi_cut, write the
+handoff as a physical EVENT ("Hard cut on the scrape of the basket —", "A whip
+pan smears the lanterns into streaks —"). H3 renders described transitions and
+ignores labelled ones, so never write "crossfade" or "L-cut".⟩
+
+Camera: ⟨For continuous_moving: say explicitly it is ONE CONTINUOUS SHOT, NO
+CUTS AND NO DISSOLVES, describe the arc as a single move (where it starts, what
+it travels through, where it settles), and give it a physical character —
+"operated by a real handheld cinema camera: controlled, slightly imperfect and
+emotionally motivated, not robotic". Subtle handheld breathing, realistic
+inertia, minor focus adjustment during the move, no artificial camera shake.
+For locked_single: say it is one continuous shot with a deliberately locked-off
+camera, give the framing, and say what the stillness is doing. For multi_cut:
+give each cut its framing and move, then each handoff as an event. Use real
+craft language — lens character, shot size, height, angle, push-in, orbit, pan,
+rack focus, exposure behaviour.⟩
+
+Lighting: ⟨The PRIMARY SOURCE, its direction and quality. What it does to the
+subject's face specifically. How deep the shadows go and whether they stay
+readable. Any secondary or ambient spill. End with the exposure intent so H3
+does not flatten it — "preserve facial detail without making the room appear
+brightly lit".⟩
+
+Audio: ⟨H3 generates the sound, so direct it. The ambient bed. Foley pinned to
+specific physical beats in your blocks. Any score — instrumentation, and where
+it swells in time. The DELIVERY of any dialogue (the lines themselves stay up in
+their timecode blocks).⟩
+
+Performance: ⟨Direct the acting, per character, as an arc: where each one starts
+emotionally and where they end. Say what register to AVOID as much as what to
+hit — "genuinely hurt and struggling to speak through tears, not screaming
+melodramatically". Natural pauses and breath, and state that the pacing must
+still fit the duration. Matters most on an unbroken take, where nothing can be
+fixed by cutting away.⟩
+
+⟨Do-not paragraph. Always exclude on-screen text, subtitles, captions, logos and
+watermarks. Then the failure modes of YOUR shotStructure — they differ: for
+continuous_moving/locked_single, incorrect eyelines, changing faces,
+inconsistent room geometry, objects moving between beats, robotic or
+artificially shaky camera, and any cut or dissolve appearing at all; for
+multi_cut, the subject changing appearance or wardrobe across a cut, the style
+or grade shifting between cuts, soft dissolves where a hard cut was asked for.
+Then this scene's own risks — modern clothing in a period scene, legible
+signage, extra people close to camera, distorted hands, exaggerated crying. A
+list, not one generic sentence: negative direction works unusually well on H3,
+and this graph has NO negative conditioning input, so prose is the only place a
+negative can live.⟩
+```
+
+---
+
+# Rules that override anything above
+
+**1. Never write a slot number.** The renderer prepends its own binding clause,
+built from your `references`:
+
+    REFERENCES — each one has a single job, and every one must be honoured:
     <Picture 1> — elderly hunched fisherwoman in a green sari. Use it for her face,
-    build and wardrobe, held identical across every cut.
-    <Picture 2> — the fish dock at first light. Use it for the location, its
-    architecture, set dressing, palette and light.
+    build and wardrobe, held identical throughout.
 
-You do not know which plate lands in which slot — state substitution,
-background-last ordering and the reference cap all happen after you write. So
-**`videoPrompt` must contain no "Image 1", no "Picture 2", no "reference 3",
-no slot numbers of any kind.** Instead, re-describe every visible character,
-object and location BY APPEARANCE, matching its plate, so the prose and the
-plates agree.
+You cannot know which plate lands in which slot — state substitution,
+background-last ordering and the 9-ref cap all run after you write. So
+`videoPrompt` must contain **no "Image 1", no "Picture 2", no slot numbers at
+all.** Re-describe every visible character, object and location BY APPEARANCE so
+the prose and the plates agree. What you DO control is each reference's `job` —
+the highest-leverage thing in this output. Give every plate a **different,
+specific** job.
 
-What you DO control is the `job` field, and it is the highest-leverage thing
-in this whole output. "Use Image 1 for the mood and film texture; Image 2 for
-the talent; Image 3 for the bag" measurably outperforms handing the model four
-images and a description. Give every plate a **different, specific** job.
+**2. A line the plan gives you is not optional.** Check your section's shots: any
+shot with a `dialogue` value means that exact line is spoken here. It must
+appear **verbatim**, on its own quoted line, in the block where it falls. Keep
+the original language and wording, including non-English lines. Do not
+paraphrase, do not summarise, and never replace it with a description like
+"dialogue delivery is non-verbal" — that silently deletes story content the
+writer put there.
 
-## 2. Write a TIMECODED shot list
+**3. Stage only YOUR section's beats.** Every beat named in another section's
+prose belongs to that section. No lead-in from the previous, no anticipation of
+the next.
 
-Anything longer than one beat gets timecoded blocks, written literally:
+**4. One plate per character per render.** The whole scene is one pass. If
+someone's appearance changes mid-scene, cite the state they END in and carry the
+change in the prose.
 
-    [0-3 seconds] Low three-quarter angle, tight on ...
-    [3-8 seconds] Hard cut to a wide ...
-    [8-15 seconds] Slow push-in as ...
-
-The blocks must tile your whole `duration` with no gaps and no overlap: the
-first starts at 0, each one's end is the next one's start, the last one's end
-is exactly `duration`. This is what keeps a 15-second render from drifting
-into a slideshow. Mirror the same list into the `cuts` array.
-
-Two to four cuts is the working range for 15 seconds. One sustained cut is
-fine when the beat earns it. More than four and it stops being a scene.
-
-## 3. Describe transitions as EVENTS, not as named effects
-
-H3 ignores "crossfade" and "L-cut" and renders what you physically describe.
-Write "a hard cut on the impact of the crate hitting the stone", "a whip pan
-that smears the lanterns into streaks", "cut at the peak of the blur, then
-settle back into focus".
-
-## 4. Direct the audio — it is generated, not inherited
-
-The model produces synced stereo sound. Give it a paragraph naming:
-
-- the **ambient bed** (the room, the weather, the crowd, the sea)
-- **foley paired to specific physical beats** in your cuts
-- any **score** — instrumentation, and where the beat lands in time
-- any **dialogue**, as a SHORT quoted line with a delivery cue
-
-If the project's narration flag above is true, a narration-mode section may
-carry a narrator line; otherwise characters speak in-scene and non-dialogue
-beats play on action and ambient sound alone.
-
-## 5. State what you do NOT want
-
-Negative direction works unusually well on H3, and this graph has no negative
-conditioning input at all — the prompt prose is the only place a negative can
-live. End with a specific do-not sentence for THIS scene's real failure modes:
-on-screen subtitles or captions, legible signage, soft dissolves, modern
-clothing in a period scene, extra people in an empty street. Not generic
-quality words.
-
-## 6. Lock identity by listing what to preserve
-
-For every character who has to survive the scene, name the concrete features:
-hair, garment, colour, silhouette, the one prop they carry. Naming features
-gives the model something to hold. The same technique works for objects,
-locations and typography.
-
-## 7. Use real camera and film language
-
-Lens, movement, exposure behaviour and stock all translate directly: "subtle
-handheld shake, then push in quickly and rack focus", "wide angle with strong
-perspective distortion", "fine grain, soft highlight halation, restrained
-colour", "backlit exposure breathing, coarse noise in the shadows".
-
-## 8. Motion, not tableau
-
-Every cut states a beginning state and an end state. A contact or impact beat
-OPENS at the contact and spends its seconds on the follow-through — never
-winds up to it.
+**5. No legible text in frame** unless the scene is specifically about a title or
+a sign — describe signage as indistinct shapes. And do not name a character the
+story has not yet introduced; describe them by appearance and role.
 
 ---
 
 # Your section
 
-Find your section in the scene plan above by its `id`, then:
+1. Find your section in the scene plan by `id`. Read its `text`, `sceneBrief`,
+   `emotion` (the ONE feeling this beat must land) and `caption`.
+2. Read the `shots` whose ids begin with your section's id — those are your
+   **beats**, and their summed duration is your screen-time budget.
+3. Decide `shotStructure` from the beat.
+4. Set `duration` to that budget, clamped into 5–15 seconds. If the beats will
+   not fit in 15s, drop the least essential rather than overrunning — the
+   renderer hard-clamps and the tail of your shot list then never renders.
+5. Fill `references`: only what is actually visible — the characters present,
+   any object the action is physically about, and exactly one location. Subjects
+   first (most important first), location last. Up to 9, but fewer and sharper
+   beats more.
+6. Write `videoPrompt` against the skeleton, and `purpose` in one line.
 
-1. Read its `text` (the story prose), its `sceneBrief` (the visual event), its
-   `emotion` (the ONE feeling this beat must land) and its `caption`.
-2. Read the `shots` in the plan whose ids begin with your section's id — those
-   are the beats the planner budgeted for this section. **In this bundle they
-   become the CUTS INSIDE YOUR ONE RENDER**, not separate clips. Their summed
-   duration is your section's screen-time budget.
-3. Set `duration` to that budget, clamped into 5–15 seconds. If the section's
-   beats genuinely will not fit in 15 seconds, drop the least essential beat
-   rather than overrunning — the renderer will hard-clamp you otherwise and
-   the tail of your shot list will simply not be rendered.
-4. Cite in `references` only what is actually visible somewhere in this scene:
-   the characters present, any object the action is physically about, and
-   exactly one location — subjects first (most important first), location
-   last. Up to 9, but fewer and sharper beats more.
-5. Write `videoPrompt` in this order: the style line, the timecoded shot list,
-   the audio paragraph, the do-not sentence.
-
-## Fences
-
-- **Stage only YOUR section's beats.** Every beat named in another section's
-  prose belongs to that section. No lead-in from the previous section, no
-  anticipation of the next.
-- **A character can only be held from ONE plate per render.** The whole scene
-  is one pass. If someone's appearance changes mid-scene, cite the state they
-  END in and carry the change itself in the prose.
-- **No legible text in frame** unless the scene is specifically about a title
-  or a sign — describe signage as indistinct shapes.
-- **Do not name a character the story has not yet introduced.** Describe them
-  by appearance and role instead.
-
-This call is for scene id: {{item_id}} — find it in the scene plan's
-`sections` array, and write only that scene.
+This call is for scene id: {{item_id}} — find it in the scene plan's `sections`
+array and write only that scene.
