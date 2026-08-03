@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "videoPrompt",
+    "references",
+    "duration",
+    "cuts",
+    "audio",
+    "avoid",
+    "purpose"
+  ],
+  "properties": {
+    "videoPrompt": {
+      "type": "string",
+      "minLength": 400,
+      "maxLength": 6000,
+      "description": "The COMPLETE, standalone prompt for ONE MiniMax H3 generation, ready to render with no further enhancement. This is NOT one shot — it is a WHOLE SCENE of 5 to 15 seconds containing SEVERAL CUTS, and it must be written as a directed sequence, in this order: (a) one opening line naming the art style, the aspect and the overall look; (b) a TIMECODED SHOT LIST, one block per cut, written literally as '[0-3 seconds] ... [3-7 seconds] ...' covering the whole duration with no gaps and no overlap; each block states shot size, camera height/angle, camera MOVE, what is in frame, and the ACTION AS MOTION (a beginning state and an end state, never a frozen tableau); (c) the TRANSITIONS between cuts written as physical EVENTS, not named effects ('a hard cut on the impact', 'a whip pan that smears the frame') -- H3 responds to described transitions and ignores labelled ones; (d) an AUDIO paragraph -- this model generates synced stereo sound natively, so name the ambient bed, the foley paired to each physical beat, any music, and any dialogue as a SHORT quoted line with a delivery cue; (e) a final DO-NOT paragraph. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number anywhere in this text: the renderer prepends its own '<Picture N>' reference-binding clause built from your `references` array, and a second, contradictory numbering is the fastest way to break identity. Instead, re-describe every visible character/object/location BY APPEARANCE so the prose and the plates agree. Flowing cinematic prose inside each timecode block, not a tag list."
+    },
+    "cuts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "description": "The same cut list as structured data -- for the operator's reading and for QA that the timecodes actually tile the duration. It MUST match the '[a-b seconds]' blocks inside videoPrompt exactly. Two to four cuts is the working range for a 15-second scene; one cut is legitimate for a single sustained beat, and more than four inside 15 seconds reads as a montage rather than a scene.",
+      "items": {
+        "type": "object",
+        "required": ["start", "end", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "start": { "type": "number", "minimum": 0, "description": "Seconds from the start of the clip when this cut begins. The first cut MUST start at 0." },
+          "end": { "type": "number", "minimum": 0, "description": "Seconds when this cut ends. MUST equal the next cut's `start`, and the last cut's `end` MUST equal `duration`." },
+          "description": { "type": "string", "minLength": 20, "description": "What this cut shows -- framing, camera move, and the action as motion. One or two sentences." },
+          "transitionOut": { "type": "string", "description": "How this cut hands off to the next, described as a physical event ('cut hard on the door slam', 'whip pan smears left into'). Omit on the final cut." }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 9,
+      "description": "The reference plates H3 holds identity from for THIS whole scene. ORDER IS LOAD-BEARING: subjects first, most important first, and the single `location` reference LAST. HARD CAP 9 (H3's real limit, nearly double LTX MSR's 5) -- but fewer is still better, because every extra plate dilutes the others; cite only what is actually visible somewhere in this scene. Never empty. Appearance STATES are substituted automatically: when a character's ledger state has changed by this scene, the renderer swaps in that state's EDITED plate -- always cite the plain character id, never invent a state id. Because the whole scene renders in ONE pass, a character can only be held from ONE plate here: if their appearance changes mid-scene, cite the state they END in and carry the change itself in the prose.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "appearsAs", "job"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MUST exactly match a story_bible id: a `characters` id for type 'character', an `objects` id for type 'object', a `locations` id for type 'location'. An id matching nothing is dropped with a warning and that subject is reinvented from scratch."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["character", "object", "location"],
+            "description": "'character' resolves against the per-character anchor plates (auto-substituted with this scene's appearance-state plate when one exists). 'object' resolves against the per-object anchor plates -- use it only when the scene's action is physically ABOUT that object (held, caught, carried, handed off, dropped). 'location' resolves against the per-location plates and is moved LAST; include exactly one per scene."
+          },
+          "appearsAs": {
+            "type": "string",
+            "minLength": 3,
+            "description": "A SHORT (3-8 word) visual descriptor of what this plate shows, reflecting the character's CURRENT ledger state -- for 'character', stated gender plus one or two defining features ('elderly hunched fisherwoman in a green sari'); for 'object', its current visible state ('cane basket, half full of silver fish'); for 'location', the place and its light ('the fish dock at first light'). The renderer reads this straight into the '<Picture N> -- <appearsAs>' binding clause, so it must read as an identifying description, not a name."
+          },
+          "job": {
+            "type": "string",
+            "minLength": 8,
+            "description": "What this plate is FOR in this scene, as a phrase that completes 'Use it for ___'. This is H3's single highest-leverage instruction -- assigning every reference an explicit job measurably beats handing the model images and a description. Be specific and DIFFERENT per plate: 'the woman's face, build and wardrobe, held identical across every cut' / 'the basket's exact weave, colour and size whenever it is in frame' / 'the location, its architecture, set dressing, palette and light'. Do NOT write a slot number here -- the renderer numbers the plates itself."
+          }
+        }
+      }
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 5,
+      "maximum": 15,
+      "description": "Seconds this scene runs, 5 to 15. H3 renders 5-15s per call and this whole scene is ONE call, so this is the hard budget every cut has to fit inside -- the renderer clamps anything outside it and snaps the result to H3's 17k+5 frame grid at 24fps, so small deviations are normal. Aim at the section's own budget; if the section's beats genuinely cannot fit in 15 seconds, cut the least essential beat rather than overrunning."
+    },
+    "audio": {
+      "type": "string",
+      "minLength": 40,
+      "description": "The scene's sound design in one paragraph, for the operator's reading -- it MUST also appear inside videoPrompt. H3 generates synced stereo audio natively, so this is directed as deliberately as the picture: the ambient bed, the specific foley paired to each physical beat, any score (name instrumentation and where the beat lands), and any dialogue as a short quoted line with a delivery cue."
+    },
+    "avoid": {
+      "type": "string",
+      "minLength": 20,
+      "description": "The scene's DO-NOT list in one sentence, for the operator's reading -- it MUST also appear inside videoPrompt. Negative direction is unusually effective on H3, and this graph has NO negative conditioning input (it is guidance-distilled), so the only place a negative can live is the prompt prose. Be specific to THIS scene's failure modes ('no on-screen subtitles or captions, no soft dissolves, no modern clothing, no legible signage') rather than generic quality words."
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What this scene is FOR in the story -- the single beat it lands."
+    },
+    "styleLine": {
+      "type": "string",
+      "description": "Optional: the opening style/look sentence, repeated here for the operator. It must already be the first line of videoPrompt."
+    }
+  }
+}

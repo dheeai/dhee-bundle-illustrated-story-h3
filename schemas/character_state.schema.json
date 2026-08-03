@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["shots"],
+  "additionalProperties": false,
+  "properties": {
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per shot in scenes_plan.shots, in the SAME order. Every shot must appear, even with an empty characters[] array.",
+      "items": {
+        "type": "object",
+        "required": ["shotId", "characters"],
+        "additionalProperties": false,
+        "properties": {
+          "shotId": {
+            "type": "string",
+            "pattern": "^scene_[0-9]+_shot_[0-9]+$",
+            "description": "MUST match a shots[].id from scenes_plan exactly."
+          },
+          "characters": {
+            "type": "array",
+            "description": "Every anchored/recurring character physically present in this shot and their current appearance state as of this shot. Empty if no recurring character is present.",
+            "items": {
+              "type": "object",
+              "required": ["id", "appearance", "signature", "changedThisShot"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The story_bible character id."
+                },
+                "appearance": {
+                  "type": "string",
+                  "minLength": 10,
+                  "description": "FULL current wardrobe + props-held + condition (dirt/wet/wounds/hair) as of THIS shot — a complete, standalone description, not a diff against a prior shot."
+                },
+                "signature": {
+                  "type": "string",
+                  "minLength": 3,
+                  "description": "Short, stable lowercase key for this exact appearance state, e.g. 'lara__jacket-off__torch'. Reused verbatim while unchanged; changes only when the appearance changes."
+                },
+                "changedThisShot": {
+                  "type": "string",
+                  "description": "One short phrase naming the delta applied at this exact shot (e.g. 'sheds jacket'), or the literal string 'none' if this shot carries the character's prior state forward unchanged."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

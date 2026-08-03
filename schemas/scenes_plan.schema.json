@@ -1,0 +1,212 @@
+{
+  "type": "object",
+  "required": [
+    "title",
+    "sections",
+    "shots",
+    "narration_section_ids",
+    "character_shot_ids",
+    "none_shot_ids",
+    "kf1_shot_ids",
+    "kf2_shot_ids",
+    "kf3_shot_ids"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The reader's headline title."
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 2,
+      "description": "The story split into ordered beats \u2014 one narrated/spoken film clip each. Order = final screen order.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "heading",
+          "text",
+          "sceneBrief",
+          "mode",
+          "emotion"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^scene_[0-9]+$",
+            "description": "Sequential: scene_1, scene_2 \u2026 MUST use this exact form (not 's01') \u2014 the runner parses the scene number from it."
+          },
+          "heading": {
+            "type": "string",
+            "description": "Section title (a few words)."
+          },
+          "emotion": {
+            "type": "string",
+            "minLength": 3,
+            "description": "The ONE feeling the audience should have during this section (e.g. 'curiosity', 'unease', 'comic relief', 'quiet dread', 'acceptance'). Authored as a coherent film-wide emotional arc BEFORE locations/events are chosen; every later stage (framing, lighting, motion, score) serves this value."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 120,
+            "description": "The actual story PROSE for this section, kept intact for reading (2\u20134 short paragraphs, blank-line separated). Displayed verbatim \u2014 do NOT summarise it away."
+          },
+          "caption": {
+            "type": "string",
+            "description": "Short place/moment label, e.g. 'Dawn, the gallery rail'."
+          },
+          "sceneBrief": {
+            "type": "string",
+            "minLength": 30,
+            "description": "The key visual EVENT/ACTION this section's shot(s) depict \u2014 name the action as the subject (e.g. 'a fist knocks on the door'), never a character before the story has introduced them. Prose, not a prompt."
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Bible ids (characters/locations/objects) VISIBLE across this section's shots \u2014 re-injected into shot prompts."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "narration",
+              "dialogue"
+            ],
+            "description": "'dialogue' iff a character SPEAKS in this beat \u2014 the story gives them a line, direct or faithfully-converted reported speech; otherwise 'narration'. Classified honestly from the story: a dialogue-rich story correctly yields mostly dialogue sections."
+          }
+        }
+      }
+    },
+    "shots": {
+      "type": "array",
+      "description": "FLAT list of every shot across every section (targetShotCount per section, usually 1-3). Each shot is rendered as its OWN independent 4-10s clip; clips are concatenated, never chained or interpolated. Order = cut order.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "scene",
+          "shotNumber",
+          "duration",
+          "description",
+          "characterPresence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^scene_[0-9]+_shot_[0-9]+$",
+            "description": "MUST be 'scene_<sectionNumber>_shot_<shotNumber>' \u2014 e.g. the 2nd shot of scene_3 is 'scene_3_shot_2'. The runner keys first-frame images and audio by this exact id."
+          },
+          "characterPresence": {
+            "type": "string",
+            "enum": [
+              "none",
+              "character"
+            ],
+            "description": "Which anchors the video-prompt stage lists as this shot's references[], and how it composes the frame. 'character' = an anchored/recurring character must appear recognizably (continuity reaction shots, beats about a person). 'none' = NO recurring character may appear in frame \u2014 a pure action/environment/object moment. The model always receives at least one reference, so 'none' is a promise about the frame's content, not a mechanical guarantee."
+          },
+          "scene": {
+            "type": "integer",
+            "description": "The section number this shot belongs to."
+          },
+          "shotNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "description": "1-based position of this shot within its section."
+          },
+          "duration": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 14,
+            "description": "Seconds this shot runs, 2-10 (working range 4-10). Hard 10s ceiling \u2014 the runner clamps and snaps to the 4n+1 frame grid at 24fps."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "The ONE distinct ACTION/EVENT this shot shows, verb-first and concrete (e.g. 'a fist pounds three times on the iron door') \u2014 NOT a character standing or looking. Omit any character not yet introduced by the story. This is what the shot's video prompt is built from."
+          },
+          "cameraWork": {
+            "type": "string",
+            "description": "Optional short framing/camera note (e.g. 'low angle, slow push-in')."
+          },
+          "dialogue": {
+            "type": "string",
+            "description": "ONLY on shots within a mode='dialogue' section. The exact line spoken during THIS shot, verbatim, one speaker's utterance. A speaker change is a new shot. This is the sole source of the spoken line reaching the video model."
+          },
+          "speaker": {
+            "type": "string",
+            "description": "ONLY alongside `dialogue`. The bible character id who speaks this shot's line. The film is silent, so this selects the anchor identity and tells the video-prompt stage whose body language carries the beat; it drives no lip-sync."
+          },
+          "emotion": {
+            "type": "string",
+            "description": "ONLY alongside `dialogue`. Short delivery descriptor (e.g. 'warm, tender') feeding the 'in a <emotion> voice' phrasing. Never the spoken words themselves."
+          },
+          "motionIntensity": {
+            "type": "string",
+            "enum": [
+              "static",
+              "moderate",
+              "dynamic"
+            ],
+            "description": "NOT USED in this bundle. Shot pacing is expressed through `duration` instead \u2014 a multi-stage physical beat earns 8-10s rather than extra keyframe guides."
+          },
+          "keyframeCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "NOT USED in this bundle (no keyframe chain)."
+          },
+          "speakerOnScreen": {
+            "type": "boolean",
+            "description": "NOT USED in this bundle \u2014 it existed to protect LTX lip-sync, and this film is silent."
+          }
+        }
+      }
+    },
+    "narration_section_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Subset of `sections[].id` with mode='narration', in section order. MUST exactly match. If the project's `narration` flag is false, MUST be an empty array regardless of section modes."
+    },
+    "character_shot_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Subset of `shots[].id` with characterPresence='character', in shot order. MUST exactly match. Computed for inspection/filtering only \u2014 every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
+    },
+    "none_shot_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Subset of `shots[].id` with characterPresence='none', in shot order. MUST exactly match. Computed for inspection/filtering only \u2014 every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
+    },
+    "kf1_shot_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+    },
+    "kf2_shot_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+    },
+    "kf3_shot_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+    }
+  }
+}

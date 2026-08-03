@@ -1,0 +1,244 @@
+{
+  "load_scene": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "krea_bg.png"
+    },
+    "_meta": {
+      "title": "Scene image (edited)"
+    }
+  },
+  "load_subject": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "krea_charA.png"
+    },
+    "_meta": {
+      "title": "Subject image (inserted)"
+    }
+  },
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "krea2_turbo_fp8.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "Krea2 Turbo model"
+    }
+  },
+  "lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "lora_name": "krea2_identity_edit_v1_2.safetensors",
+      "strength_model": 1.0
+    },
+    "_meta": {
+      "title": "Identity Edit LoRA"
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+      "type": "krea2",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "Qwen3-VL (krea2, vision)"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "_meta": {
+      "title": "Krea2 / Qwen-Image VAE"
+    }
+  },
+  "enc_scene": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "load_scene",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Scene -> source_latent"
+    }
+  },
+  "enc_subject": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "load_subject",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Subject -> source_latent_b"
+    }
+  },
+  "patch": {
+    "class_type": "Krea2EditModelPatch",
+    "inputs": {
+      "model": [
+        "lora_refusal",
+        0
+      ],
+      "source_latent": [
+        "enc_scene",
+        0
+      ],
+      "source_latent_b": [
+        "enc_subject",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Krea2 Edit (source patch)"
+    }
+  },
+  "pos": {
+    "class_type": "Krea2EditGroundedEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "",
+      "image": [
+        "load_scene",
+        0
+      ],
+      "image_b": [
+        "load_subject",
+        0
+      ],
+      "grounding_px": 1024
+    },
+    "_meta": {
+      "title": "Positive (grounded instruction)"
+    }
+  },
+  "neg": {
+    "class_type": "Krea2EditGroundedEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "prompt": "",
+      "image": [
+        "load_scene",
+        0
+      ],
+      "image_b": [
+        "load_subject",
+        0
+      ],
+      "grounding_px": 1024
+    },
+    "_meta": {
+      "title": "Negative (trained unconditional: empty prompt, same images)"
+    }
+  },
+  "latent": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 1280,
+      "height": 720,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Target latent (match SCENE aspect ratio, <=2MP)"
+    }
+  },
+  "ksampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "patch",
+        0
+      ],
+      "positive": [
+        "pos",
+        0
+      ],
+      "negative": [
+        "neg",
+        0
+      ],
+      "latent_image": [
+        "latent",
+        0
+      ],
+      "seed": 42,
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "KSampler (Turbo: 8 steps, CFG 1.0)"
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "ksampler",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "filename_prefix": "krea2edit_turbo"
+    },
+    "_meta": {
+      "title": "Save"
+    }
+  },
+  "lora_refusal": {
+    "inputs": {
+      "lora_name": "kroma-v0.1_krea2.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "lora",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "TextFusion Refusal-Reduction LoRA"
+    }
+  }
+}

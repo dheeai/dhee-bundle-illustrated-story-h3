@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "imagePrompt",
+    "appearsAs",
+    "references"
+  ],
+  "properties": {
+    "imagePrompt": {
+      "type": "string",
+      "minLength": 80,
+      "description": "IDENTITY-ONLY. A complete, standalone description of this character's CURRENT body/face/hair/wardrobe/carried-props, derived by diffing the state's `appearance` against the character's baseline description in story_bible — never trusting `changedThisShot`. For a subtractive delta, fully describes whatever is newly revealed (colour, neckline, sleeve length, fit), not just that something was removed. Must NOT mention scene, location, action, weather or lighting, and must NOT restate any multi-view sheet layout, panel count, framing or camera angle — that is owned entirely by the downstream per-view tiling runner, not this prompt. Ends with the art style's Style suffix line verbatim."
+    },
+    "appearsAs": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120,
+      "description": "SHORT (3-8 word) visual descriptor of the character in THIS state, reading as an identifying description rather than a name (e.g. 'elderly fisherwoman, jacket on, basket full'). Shot prompts use this to refer to this plate."
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "description": "Exactly one entry: the character whose BASE anchor is routed in as the edit model's reference image. Its id MUST equal this state's characterId.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "appearsAs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MUST exactly equal this state's characterId, and match a story_bible character id."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "character"
+            ],
+            "description": "Always 'character' \u2014 resolves against the per-character base anchor image collection."
+          },
+          "appearsAs": {
+            "type": "string",
+            "minLength": 3,
+            "description": "Short visual descriptor of the BASE anchor plate being edited."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "krea2_identity_edit_v1_2_local",
+  "displayName": "Krea2 Identity-Edit v1.2 (grounded, base + 1 reference)",
+  "pipeline": "image_editing",
+  "outputType": "image",
+  "inputRequirements": [
+    { "id": "prompt",            "type": "text",  "source": "llm",    "required": true  },
+    { "id": "reference_image_1", "type": "image", "source": "system", "required": true  },
+    { "id": "reference_image_2", "type": "image", "source": "system", "required": false },
+    { "id": "seed",              "type": "number", "source": "system", "required": false },
+    { "id": "width",             "type": "number", "source": "system", "required": false },
+    { "id": "height",            "type": "number", "source": "system", "required": false }
+  ],
+  "parameterMappings": [
+    { "input": "prompt",            "nodeId": "pos",          "field": "prompt" },
+    { "input": "reference_image_1", "nodeId": "load_scene",   "field": "image" },
+    { "input": "reference_image_2", "nodeId": "load_subject", "field": "image" },
+    { "input": "seed",              "nodeId": "ksampler",     "field": "seed" },
+    { "input": "width",             "nodeId": "latent",       "field": "width" },
+    { "input": "height",            "nodeId": "latent",       "field": "height" }
+  ],
+  "editConfig": {
+    "imageSlots": ["reference_image_1", "reference_image_2"],
+    "loraTarget": { "nodeId": "patch", "field": "model" },
+    "scalarMap": { "seed": "seed", "width": "width", "height": "height" },
+    "pruneBranches": {
+      "reference_image_2": {
+        "deleteNodes": ["load_subject", "enc_subject"],
+        "redirects": [
+          { "from": "load_subject", "to": "load_scene" },
+          { "from": "enc_subject",  "to": "enc_scene" }
+        ]
+      }
+    }
+  },
+  "format": "api",
+  "builtIn": false,
+  "active": true,
+  "mode": "local"
+}

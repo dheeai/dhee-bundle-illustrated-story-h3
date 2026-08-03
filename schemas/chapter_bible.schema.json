@@ -1,0 +1,88 @@
+{
+  "type": "object",
+  "required": [
+    "characters",
+    "locations"
+  ],
+  "properties": {
+    "characters": {
+      "type": "array",
+      "description": "Every recurring PERSON/creature in the story. Purely visual, canonical, story-wide identity \u2014 this is what every later prompt re-states.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 60,
+            "description": "Fixed visual identity ONLY: apparent age, sex, build/height, skin tone, face shape, distinctive features, hair (colour/length/style), signature wardrobe and its colours, anything a viewer must see to recognise them. No emotion, no plot, no action."
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "description": "Recurring places/settings. REQUIRED and never empty: each one gets its own generated SETTING PLATE, which LTX MSR takes as the shot's BACKGROUND reference (last slot) \u2014 that plate is what stops the same place being rebuilt differently in every shot. Every place any shot is set in must appear here.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 40,
+            "description": "Fixed visual character of the place: architecture/landscape, materials, palette, era, time-of-day feel, defining props."
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "objects": {
+      "type": "array",
+      "description": "Key recurring props/objects that must stay consistent (a specific lamp, a red coat, a sword).",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 60,
+            "description": "Fixed visual identity of the object: form, material, colour, size, distinctive marks, mounting/handle, and how it is lit. A story-critical object (one the plot's physical action hinges on) needs the same rigor as a character description."
+          }
+        }
+      }
+    }
+  }
+}

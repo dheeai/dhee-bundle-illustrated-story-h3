@@ -1,0 +1,174 @@
+{
+  "type": "object",
+  "required": [
+    "section",
+    "shots"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "section": {
+      "type": "object",
+      "required": [
+        "id",
+        "heading",
+        "text",
+        "sceneBrief",
+        "mode",
+        "emotion"
+      ],
+      "additionalProperties": false,
+      "description": "The full detail for THIS one section only — the assembly step collects one of these per scene and flattens them, in section-number order, into the canonical scenes_plan.json.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^scene_[0-9]+$",
+          "description": "MUST equal the outline's id for this scene, verbatim (scene_<N>)."
+        },
+        "heading": {
+          "type": "string",
+          "description": "Section title (a few words)."
+        },
+        "emotion": {
+          "type": "string",
+          "minLength": 3,
+          "description": "MUST equal the outline's emotion for this scene, verbatim — do not reclassify. Drives framing, lighting and performance choices in every downstream prompt."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 120,
+          "description": "The actual story PROSE for this section, kept intact for reading (2–4 short paragraphs, blank-line separated). Displayed verbatim — do NOT summarise it away."
+        },
+        "caption": {
+          "type": "string",
+          "description": "Short place/moment label, e.g. 'Dawn, the gallery rail'."
+        },
+        "sceneBrief": {
+          "type": "string",
+          "minLength": 30,
+          "description": "The key visual EVENT/ACTION this section's shot(s) depict — name the action as the subject (e.g. 'a fist knocks on the door'), never a character before the story has introduced them. Prose, not a prompt. Expands the outline's short `brief`."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Bible ids (characters/locations/objects) VISIBLE across this section's shots — re-injected into shot prompts."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "narration",
+            "dialogue"
+          ],
+          "description": "MUST equal the outline's mode for this scene, verbatim — do not reclassify."
+        }
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "description": "This section's ordered shots — exactly this section's outline entry's targetShotCount (deterministically computed by plan.chapter_merge, usually 1-3). Each shot is rendered as its OWN independent 4-10s clip; clips are concatenated, never chained or interpolated. Order = cut order.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "scene",
+          "shotNumber",
+          "duration",
+          "description",
+          "characterPresence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^scene_[0-9]+_shot_[0-9]+$",
+            "description": "MUST be 'scene_<sectionNumber>_shot_<shotNumber>' — e.g. the 2nd shot of scene_3 is 'scene_3_shot_2'. The runner keys first-frame images and audio by this exact id."
+          },
+          "characterPresence": {
+            "type": "string",
+            "enum": [
+              "none",
+              "character"
+            ],
+            "description": "Which anchors the video-prompt stage lists as this shot's references[], and how it composes the frame. 'character' = an anchored/recurring character must appear recognizably (continuity reaction shots, beats about a person). 'none' = NO recurring character may appear in frame — a pure action/environment/object moment. The model always receives at least one reference, so 'none' is a promise about the frame's content, not a mechanical guarantee."
+          },
+          "scene": {
+            "type": "integer",
+            "description": "The section number this shot belongs to — must match this fragment's own section number."
+          },
+          "shotNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6,
+            "description": "1-based position of this shot within its section."
+          },
+          "duration": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 10,
+            "description": "Seconds this shot runs, 2-10 (working range 4-10). Each shot is one independent Bernini clip with a hard 10s ceiling; the runner clamps to 10 and snaps to the model's 4n+1 frame grid at 24fps. Prefer fewer, longer shots — every boundary is a hard cut across which nothing carries. This section's own budgetSec/targetShotCount (on its scene_outline entry) determine how many shots and roughly how long each runs."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "The ONE distinct ACTION/EVENT this shot shows, verb-first and concrete (e.g. 'a fist pounds three times on the iron door') — NOT a character standing or looking. Omit any character not yet introduced by the story. This is what the shot's video prompt is built from."
+          },
+          "cameraWork": {
+            "type": "string",
+            "description": "Optional short framing/camera note (e.g. 'low angle, slow push-in')."
+          },
+          "dialogue": {
+            "type": "string",
+            "description": "ONLY on shots within a mode='dialogue' section. The exact line spoken during THIS shot, verbatim, one speaker's utterance. A speaker change is a new shot. This is the sole source of the spoken line reaching the video model."
+          },
+          "speaker": {
+            "type": "string",
+            "description": "ONLY alongside `dialogue`. The bible character id who speaks this shot's line — selects the anchor identity and drives lip-sync."
+          },
+          "emotion": {
+            "type": "string",
+            "description": "ONLY alongside `dialogue`. Short delivery descriptor (e.g. 'warm, tender') feeding the 'in a <emotion> voice' phrasing. Never the spoken words themselves."
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "section": {
+        "properties": {
+          "mode": {
+            "const": "dialogue"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "shots": {
+        "contains": {
+          "type": "object",
+          "properties": {
+            "dialogue": {
+              "type": "string",
+              "minLength": 1
+            },
+            "speaker": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "dialogue",
+            "speaker"
+          ]
+        },
+        "type": "array"
+      }
+    }
+  }
+}

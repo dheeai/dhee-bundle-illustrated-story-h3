@@ -1,0 +1,1281 @@
+{
+  "id": "illustrated_story_h3",
+  "version": "0.1.0",
+  "license": "MIT",
+  "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
+  "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
+  "techLine": "ANY-LENGTH CHAPTER SPLIT · PER-CHAPTER SCREENPLAY/BIBLE/OUTLINE (previousN carry-forward) · DETERMINISTIC MERGE · CHARACTER/OBJECT/LOCATION ANCHOR PLATES · CHARACTER STATE LEDGER · PER-STATE EDITED PLATES · MINIMAX H3 MULTI-CUT REFERENCE-TO-VIDEO SCENES (up to 15s, native stereo AV, 9 refs) · FINAL CUT",
+  "engineCompat": ">=0.1.0",
+  "description": "The MiniMax H3 sibling of illustrated_story_msr. Everything up to and including the character-state plates is byte-for-byte the same pipeline; what changes is the last stretch of the graph.\n\nillustrated_story_msr renders one LTX MSR clip per SHOT (4-10s, one continuous take, no cuts) and concatenates them, so every cut in the finished film is a boundary between two independent generations. H3 inverts that: it renders 5-15 seconds containing SEVERAL CUTS in a single pass, so a whole scene -- its coverage, its whip pans, its hard cuts on impact, its ambient bed and foley and dialogue -- comes out of one generation, internally consistent by construction. So the per-shot nodes (shot_brief, shot_video_prompt, shot_clip) are replaced by two per-SECTION nodes: scene_video_prompt authors a timecoded multi-cut shot list for one section, and scene_clip renders it. The existing planner already budgets sections at roughly 15 seconds each (plan.chapter_merge splits a chapter's durationSec across its sections), so one section maps cleanly onto one H3 call, and the section's planned shots become the CUTS INSIDE that call rather than separate clips.\n\nThe prompt stage encodes MiniMax's own documented H3 guidance: every reference is given an explicit job (the single highest-leverage instruction for this model), the shot list is timecoded so a 15s render does not drift into a slideshow, transitions are described as physical events rather than named effects, the audio is directed as deliberately as the picture, and the negatives live in the prompt prose -- because the H3 ref2va graph is guidance-distilled and has no negative conditioning input at all. The '<Picture N>' reference-binding clause is NOT written by the authoring model (it cannot know the final slot order); the runner builds it deterministically from each reference's appearsAs + job after state substitution and background-last routing have run.",
+  "dependencies": {
+    "runners": {
+      "llm.generate": ">=0.1.0",
+      "plan.story_prepare": ">=0.1.0",
+      "llm.story_chapters": ">=0.3.0",
+      "plan.chapter_text": ">=0.2.0",
+      "plan.chapter_shots": ">=0.1.0",
+      "plan.chapter_merge": ">=0.2.0",
+      "comfy.tti": ">=0.7.1",
+      "comfy.image_edit": ">=0.1.0",
+      "image.sheet_split": ">=0.1.0",
+      "image.sheet_view_ref": ">=0.1.0",
+      "image.sheet_join": ">=0.1.0",
+      "plan.character_states": ">=0.1.0",
+      "ffmpeg.concat": ">=0.1.0",
+      "plan.assemble_keyframes": ">=0.4.0",
+      "comfy.minimax_h3_r2v": ">=0.1.0"
+    },
+    "runnerPackages": {
+      "plan.story_prepare": "dhee-runner-story-chapters",
+      "llm.story_chapters": "dhee-runner-story-chapters",
+      "plan.chapter_text": "dhee-runner-story-chapters",
+      "plan.chapter_shots": "dhee-runner-story-chapters",
+      "plan.shot_brief": "dhee-runner-story-chapters",
+      "plan.chapter_merge": "dhee-runner-story-chapters",
+      "comfy.tti": "dhee-runner-image-edit",
+      "comfy.image_edit": "dhee-runner-image-edit",
+      "image.sheet_split": "dhee-runner-sheet-tiles",
+      "image.sheet_view_ref": "dhee-runner-sheet-tiles",
+      "image.sheet_join": "dhee-runner-sheet-tiles",
+      "plan.character_states": "dhee-runner-ltx-reference",
+      "comfy.ltx_msr": "dhee-runner-ltx-reference",
+      "plan.assemble_keyframes": "dhee-runner-plan-keyframes"
+    }
+  },
+  "reviewLoopMax": 2,
+  "inputs": [
+    {
+      "id": "story_input",
+      "kind": "file",
+      "path": "inputs/story.md",
+      "required": false,
+      "label": "Story",
+      "placeholder": "Paste a story of ANY length — a short story or a full novel. It becomes a narrated animated film, chaptered and paced off its own length.",
+      "multiline": true
+    },
+    {
+      "id": "style",
+      "kind": "project",
+      "field": "style",
+      "default": "cinematic photoreal — filmic lighting, shallow depth of field, natural colour grade",
+      "label": "Visual style hint",
+      "control": "text",
+      "placeholder": "A hint the art-style step builds on. Leave as-is for cinematic photoreal."
+    },
+    {
+      "id": "narration",
+      "kind": "project",
+      "field": "narration",
+      "default": false,
+      "label": "Narrator voiceover",
+      "control": "select",
+      "options": [
+        true,
+        false
+      ],
+      "placeholder": "false (default) = a pure movie: characters speak natively in-scene, non-dialogue beats play on action + ambient sound. true = a designed narrator voices narration-mode beats."
+    },
+    {
+      "id": "target_duration",
+      "kind": "project",
+      "field": "target_duration",
+      "default": "auto",
+      "label": "Target length (seconds)",
+      "control": "text",
+      "placeholder": "\"auto\" (default) DERIVES the film's length from the story's own length (see the rate below) — no fixed ceiling, a longer story yields a longer film. Or type an explicit number of seconds (e.g. 30, 60, 90, 120, 180, or any longer figure) to force a fixed length instead."
+    },
+    {
+      "id": "seconds_per_1000_words",
+      "kind": "project",
+      "field": "seconds_per_1000_words",
+      "default": 180,
+      "label": "Auto-length rate (seconds per 1000 words) — describes the pacing this pass actually authors, not a budget it is forced into",
+      "control": "text",
+      "placeholder": "Only used when Target length is \"auto\". Seconds of finished film per 1000 words of story prose — 180 (default, v0.9.0) means a 6,000-word story runs ~18 minutes and a 90,000-word novel runs ~4.5 hours. `target_duration` is DESCRIPTIVE of the authoring pass's natural pacing, not a CAP it is compressed into.",
+      "_comment": "v0.9.0: recalibrated 60 → 180 (founder decision, dheeai/dhee-runner-story-chapters#4). 60 was never derived from what this pass actually authors -- it was a guess. Real authored output across three runs of this exact bundle measured 120-229s of finished film per 1000 words (lamp_keeper_msr: 899w → 108s = 120s/1000w; lamp_keeper_v2: 1591w → 364s = 229s/1000w; lamp_keeper_v3: 1591w → 285.4s = 179s/1000w), landing near 180s/1000w in aggregate, while budgetSec injection into scene_detail was independently confirmed exact (scene_outline summed to the OLD 60s/1000w target to the decimal) -- so the overshoot was never a budgetSec-arithmetic bug, and it was consistent across BOTH the deepseek run (2.0x over the old target) and the g4 runs (3.0-3.8x over it), so it was never a model-quality problem either. The founder's call: stop trying to compress an LLM authoring pass's natural pacing down to an arbitrary rate by discarding shots it already wrote: raise the rate to match reality instead. Consequence, stated plainly: films now come out roughly 3x longer than under the old default -- a 90,000-word novel derives ~4.5 hours of target film rather than ~1.5 hours. This is deliberate. plan.assemble_keyframes' own duration-budget tripwire (chaptersInput, unchanged, still ±25% durationTolerance -- do NOT loosen it, it is now a genuinely useful signal) still catches any run whose ACTUAL authored pacing strays from whatever rate is configured; it is not being silenced by this change, only recalibrated against a truer baseline."
+    }
+  ],
+  "goal": "final_video",
+  "nodes": [
+    {
+      "id": "story",
+      "displayName": "Story",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "story_input",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/story.md"
+      },
+      "runner": {
+        "tool": "plan.story_prepare",
+        "config": {
+          "outputPath": "plans/story.md",
+          "storyInput": "story_input",
+          "promptTemplate": "prompts/story.md",
+          "tier": "heavy"
+        }
+      },
+      "displayCapability": "story.prose"
+    },
+    {
+      "id": "chapters",
+      "displayName": "Chapters (any-length split)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "story",
+          "usage": "input"
+        },
+        {
+          "from": "target_duration",
+          "usage": "context"
+        },
+        {
+          "from": "seconds_per_1000_words",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/chapters.json"
+      },
+      "runner": {
+        "tool": "llm.story_chapters",
+        "config": {
+          "outputPath": "plans/chapters.json",
+          "storyInput": "story",
+          "targetDurationInput": "target_duration",
+          "secondsPer1000WordsInput": "seconds_per_1000_words",
+          "tier": "heavy"
+        }
+      },
+      "displayCapability": "story.prose"
+    },
+    {
+      "id": "chapter_text",
+      "displayName": "Chapter Text (verbatim per-chapter slice)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapters",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "story",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/chapter_texts/{{item_id}}.md"
+      },
+      "runner": {
+        "tool": "plan.chapter_text",
+        "config": {
+          "outputPath": "plans/chapter_texts/{{item_id}}.md",
+          "storyInput": "story",
+          "chaptersInput": "chapters"
+        }
+      },
+      "displayCapability": "story.prose"
+    },
+    {
+      "id": "art_style",
+      "displayName": "Art Style",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "story",
+          "usage": "context"
+        },
+        {
+          "from": "style",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/art_style.md"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "promptTemplate": "prompts/art_style.md",
+          "tier": "heavy",
+          "outputFormat": "markdown"
+        }
+      },
+      "displayCapability": "style.world"
+    },
+    {
+      "id": "chapter_bible",
+      "displayName": "Chapter Bible (per-chapter visual identity, carried forward)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapter_text",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        },
+        {
+          "from": "chapter_bible",
+          "usage": "context",
+          "scope": "previousN",
+          "n": 1
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/chapter_bibles/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.3.0: the 'chapter_bible' self-edge above (scope:previousN, n:1) is dhee-core's generalized previousN ordering. Exposes ctx.inputs.chapter_bible as an ordered array (newest-first; with n:1 just the immediately-preceding chapter) of { shotNumber, itemId, outputAbs, content } — content is the FULL prior chapter's bible JSON, inlined since this node's output format is json. Empty array for the very first chapter (ch_01). The prompt (prompts/chapter_bible.md) re-emits any carried-forward entity with its EXACT same id and description copied verbatim — the downstream plan.chapter_merge (mode:bible) union keeps the FIRST definition of every id across the whole film and silently drops later duplicates, so a drifted re-description here is simply lost, never an improvement. concurrency is explicitly 1 for readers — the engine already force-clamps any node with a previousN input to serial regardless of this value, since chapter N+1's call depends on chapter N's own completed bible output.",
+          "promptTemplate": "prompts/chapter_bible.md",
+          "outputSchema": "schemas/chapter_bible.schema.json",
+          "tier": "heavy",
+          "outputFormat": "json",
+          "maxTokens": 8000,
+          "structuredMode": "schema",
+          "concurrency": 1
+        }
+      },
+      "displayCapability": "character.plan"
+    },
+    {
+      "id": "story_bible",
+      "displayName": "Story Bible (visual identity, merged across chapters)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "chapter_bible",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "chapters",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/story_bible.json"
+      },
+      "runner": {
+        "tool": "plan.chapter_merge",
+        "config": {
+          "mode": "bible",
+          "outputPath": "plans/story_bible.json",
+          "partsInput": "chapter_bible",
+          "chaptersInput": "chapters",
+          "outputSchema": "schemas/story_bible.schema.json"
+        }
+      },
+      "displayCapability": "character.plan"
+    },
+    {
+      "id": "character_anchor_prompt",
+      "displayName": "Character Anchor Prompts",
+      "kind": "collection",
+      "itemSource": "story_bible",
+      "itemKey": "characters",
+      "inputs": [
+        {
+          "from": "story_bible",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/anchors/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "promptTemplate": "prompts/character_anchor_prompt.md",
+          "tier": "heavy",
+          "outputFormat": "json"
+        }
+      },
+      "displayCapability": "character.prompt",
+      "headlineField": "imagePrompt"
+    },
+    {
+      "id": "character_anchor_image",
+      "displayName": "Character Identity Sheets",
+      "kind": "collection",
+      "itemSource": "character_anchor_prompt",
+      "inputs": [
+        {
+          "from": "character_anchor_prompt",
+          "usage": "input",
+          "scope": "matching"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/anchors/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "comfy.tti",
+        "config": {
+          "workflowPath": "workflows/zimage_tti.json",
+          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "endpoint": "self.local",
+          "promptInput": "character_anchor_prompt",
+          "additionalArgs": {
+            "width": 1536,
+            "height": 864
+          }
+        }
+      },
+      "displayCapability": "character.image"
+    },
+    {
+      "id": "object_anchor_prompt",
+      "displayName": "Object Anchor Prompts",
+      "kind": "collection",
+      "itemSource": "story_bible",
+      "itemKey": "objects",
+      "inputs": [
+        {
+          "from": "story_bible",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/anchors/objects/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "promptTemplate": "prompts/object_anchor_prompt.md",
+          "tier": "heavy",
+          "outputFormat": "json"
+        }
+      },
+      "displayCapability": "object.prompt",
+      "headlineField": "imagePrompt"
+    },
+    {
+      "id": "object_anchor_image",
+      "displayName": "Object Anchors",
+      "kind": "collection",
+      "itemSource": "object_anchor_prompt",
+      "inputs": [
+        {
+          "from": "object_anchor_prompt",
+          "usage": "input",
+          "scope": "matching"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/anchors/objects/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "comfy.tti",
+        "config": {
+          "workflowPath": "workflows/zimage_tti.json",
+          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "endpoint": "self.local",
+          "promptInput": "object_anchor_prompt",
+          "additionalArgs": {
+            "width": 1024,
+            "height": 1024
+          }
+        }
+      },
+      "displayCapability": "object.image"
+    },
+    {
+      "id": "location_anchor_prompt",
+      "displayName": "Location Anchor Prompts",
+      "kind": "collection",
+      "itemSource": "story_bible",
+      "itemKey": "locations",
+      "inputs": [
+        {
+          "from": "story_bible",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/anchors/locations/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "promptTemplate": "prompts/location_anchor_prompt.md",
+          "tier": "heavy",
+          "outputFormat": "json"
+        }
+      },
+      "displayCapability": "setting.prompt",
+      "headlineField": "imagePrompt"
+    },
+    {
+      "id": "location_anchor_image",
+      "displayName": "Location Plates",
+      "kind": "collection",
+      "itemSource": "location_anchor_prompt",
+      "inputs": [
+        {
+          "from": "location_anchor_prompt",
+          "usage": "input",
+          "scope": "matching"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/anchors/locations/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "comfy.tti",
+        "config": {
+          "workflowPath": "workflows/zimage_tti.json",
+          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "endpoint": "self.local",
+          "promptInput": "location_anchor_prompt",
+          "additionalArgs": {
+            "width": 1216,
+            "height": 704
+          }
+        }
+      },
+      "displayCapability": "setting.image"
+    },
+    {
+      "id": "chapter_screenplay",
+      "displayName": "Chapter Screenplay (per-chapter plain-English source of truth, carried forward)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapter_text",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        },
+        {
+          "from": "target_duration",
+          "usage": "context"
+        },
+        {
+          "from": "chapter_screenplay",
+          "usage": "context",
+          "scope": "previousN",
+          "n": 1
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/chapter_screenplay/{{item_id}}.md"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.3.0: the 'chapter_screenplay' self-edge above (scope:previousN, n:1) is dhee-core's generalized previousN ordering. Exposes ctx.inputs.chapter_screenplay as an ordered array (newest-first; with n:1 just the immediately-preceding chapter) of { shotNumber, itemId, outputAbs, content } — content is the FULL prior chapter's screenplay markdown, inlined since this node's output format is markdown. Empty array for the very first chapter (ch_01). The prompt (prompts/chapter_screenplay.md) uses it ONLY for continuity (where characters physically are, what they wear/carry, what just happened, the emotional temperature) and must NOT re-stage or recap anything it already covered. concurrency is explicitly 1 for readers — the engine already force-clamps any node with a previousN input to serial regardless of this value, since chapter N+1's call depends on chapter N's own completed screenplay output.",
+          "promptTemplate": "prompts/chapter_screenplay.md",
+          "outputFormat": "markdown",
+          "tier": "heavy",
+          "temperature": 0.6,
+          "maxTokens": 8000,
+          "concurrency": 1
+        }
+      },
+      "displayCapability": "screenplay.prose"
+    },
+    {
+      "id": "director_screenplay",
+      "displayName": "Director Screenplay (plain-English source of truth, merged across chapters)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "chapter_screenplay",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "chapters",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/director_screenplay.md"
+      },
+      "runner": {
+        "tool": "plan.chapter_merge",
+        "config": {
+          "mode": "concat",
+          "outputPath": "plans/director_screenplay.md",
+          "partsInput": "chapter_screenplay",
+          "chaptersInput": "chapters",
+          "heading": true
+        }
+      },
+      "displayCapability": "screenplay.prose"
+    },
+    {
+      "id": "chapter_outline",
+      "displayName": "Chapter Outline (per-chapter section skeletons)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapter_screenplay",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "narration",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/chapter_outlines/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "promptTemplate": "prompts/chapter_outline.md",
+          "outputSchema": "schemas/chapter_outline.schema.json",
+          "tier": "heavy",
+          "outputFormat": "json",
+          "maxTokens": 6000,
+          "concurrency": 2,
+          "structuredMode": "schema"
+        }
+      },
+      "displayCapability": "scene.outline"
+    },
+    {
+      "id": "scene_outline",
+      "displayName": "Scene Outline (title + section skeletons, merged + globally renumbered)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "chapter_outline",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "chapters",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/scene_outline.json"
+      },
+      "runner": {
+        "tool": "plan.chapter_merge",
+        "config": {
+          "mode": "sections",
+          "outputPath": "plans/scene_outline.json",
+          "partsInput": "chapter_outline",
+          "chaptersInput": "chapters",
+          "outputSchema": "schemas/scene_outline.schema.json",
+          "_comment": "v0.8.0: plan.chapter_merge (mode:sections) >=0.3.0 now ALSO injects a deterministic per-section budgetSec/targetShotCount — that section's own chapter's durationSec split evenly across however many sections that chapter's chapter_outline pass actually produced. This is the fix for a real regression: films were coming out 2-4x their target length (lamp_keeper_msr 108s vs a 54s target, lamp_keeper_v2 364s vs a 95s target) because the LLM-authored pacing guidance in prompts/chapter_outline.md (sections ≈ durationSec ÷ 15) and prompts/scene_detail.md's own duration arithmetic were both prose the model did not reliably follow. Doing the division here — deterministically, after the section count is already fixed — makes the film's TOTAL duration correct BY CONSTRUCTION regardless of how many sections the outline pass created. This is a PROPORTIONAL BUDGET, never a cap — it scales without limit with durationSec and section count. Do NOT delete this under the belief it re-introduces a section-count ceiling; it does not. See prompts/scene_detail.md (consumes budgetSec/targetShotCount directly) and plan.assemble_keyframes' chaptersInput tripwire (scenes_plan node below) which verifies the fix held."
+        }
+      },
+      "displayCapability": "scene.outline"
+    },
+    {
+      "id": "scene_detail",
+      "displayName": "Scene Detail (section + shots, per scene)",
+      "kind": "collection",
+      "itemSource": "scene_outline",
+      "itemKey": "sections",
+      "inputs": [
+        {
+          "from": "scene_outline",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "director_screenplay",
+          "usage": "context"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "narration",
+          "usage": "context"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/scene_fragments/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.11.0: prompts/scene_detail.md gained a SCOPE FENCE — every beat named in another section's brief belongs to that section and must not be staged here; no lead-in shots for the previous section, no anticipatory shots for the next. This fixes duplicate shots in the finished film (issue #3): a section would dramatise a LATER section's beat, that later section would then stage it properly too, and the film played the same action twice in a row with the same staging and dialogue. Measured in the-meeting (97 sections): scene_28's brief covered only a bicycle arrival, yet its shots staged scene_29's bottles beat AND scene_52's oil-pour beat, and the oil pour appeared a third time. Duplication scales with section count — 6 of 10 corpus-wide duplicate pairs were in the longest film; the short films had none. NOTE the input shape is deliberately unchanged: scene_outline's scope:'matching' is a NO-OP here, because scene_outline is a STAGE with one instance and walker.ts falls back to 'pick first' — so this node ALREADY receives every section, which is both why the leak was possible and why the fix is prompt-only. Do NOT try to add a second scene_outline input to expose the neighbours: resolvedInputs is keyed by inp.from, so two inputs from the same node collide and one silently clobbers the other. Validated by A/B on identical input (the-meeting/scene_28, thinkingcap-27b, temp 0.2): pre-fence 2 shots with the stolen beats present, post-fence 1 shot with only its own; and scene_29 still stages its own bottles beat, so the fence does not cause under-staging.",
+          "promptTemplate": "prompts/scene_detail.md",
+          "outputSchema": "schemas/scene_detail.schema.json",
+          "tier": "heavy",
+          "outputFormat": "json",
+          "maxTokens": 6000,
+          "concurrency": 4,
+          "structuredMode": "schema"
+        }
+      },
+      "displayCapability": "scene.detail"
+    },
+    {
+      "id": "scenes_plan",
+      "displayName": "Sections (Scene + Shot Breakdown)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "scene_detail",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "scene_outline",
+          "usage": "input"
+        },
+        {
+          "from": "narration",
+          "usage": "context"
+        },
+        {
+          "from": "director_screenplay",
+          "usage": "context"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/scenes_plan.json"
+      },
+      "runner": {
+        "tool": "plan.assemble_keyframes",
+        "config": {
+          "outputPath": "plans/scenes_plan.json",
+          "outputSchema": "schemas/scenes_plan.schema.json",
+          "screenplayInput": "director_screenplay",
+          "chaptersInput": "chapters",
+          "_comment": "v0.8.0: chaptersInput (plan.assemble_keyframes >=0.6.0) wires this node's new opt-in duration-budget TRIPWIRE — every assembled shot's duration is summed and logged against chapters.targetDurationSec ('shot budget: Xs planned vs Ys target (Z%)'), and a deviation beyond ±25% (durationTolerance, default) is recorded as a duration_budget_deviation entry in assembly_warnings.json. This NEVER fails the run and NEVER rescales durations — the real fix is upstream (scene_outline's plan.chapter_merge budgetSec/targetShotCount, see that node's _comment); this is only the tripwire proving it worked. Added after real runs (lamp_keeper_msr, lamp_keeper_v2) overshot their target 2-4x with no visibility into it."
+        }
+      },
+      "displayCapability": "scene.plan"
+    },
+    {
+      "id": "chapter_shots",
+      "displayName": "Chapter Shots (per-chapter shot slice, no LLM)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapters",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapter_outline",
+          "usage": "input",
+          "scope": "all"
+        },
+        {
+          "from": "scenes_plan",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/chapter_shots/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "plan.chapter_shots",
+        "config": {
+          "outputPath": "plans/chapter_shots/{{item_id}}.json",
+          "chaptersInput": "chapters",
+          "outlinesInput": "chapter_outline",
+          "shotPlanInput": "scenes_plan"
+        }
+      },
+      "displayCapability": "scene.plan"
+    },
+    {
+      "id": "chapter_state",
+      "displayName": "Chapter Character Appearance State (per-chapter ledger, carried forward)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "itemKey": "chapters",
+      "inputs": [
+        {
+          "from": "chapter_shots",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "chapter_screenplay",
+          "usage": "context",
+          "scope": "matching"
+        },
+        {
+          "from": "chapter_state",
+          "usage": "context",
+          "scope": "previousN",
+          "n": 1
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/chapter_states/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.4.0: the 'chapter_state' self-edge above (scope:previousN, n:1) is dhee-core's generalized previousN ordering, the same pattern as chapter_bible/chapter_screenplay. Exposes ctx.inputs.chapter_state as an ordered array (newest-first; with n:1 just the immediately-preceding chapter) of { shotNumber, itemId, outputAbs, content } — content is the FULL prior chapter's ledger JSON, inlined since this node's output format is json. Empty array for the very first chapter (ch_01), whose characters instead start from the story_bible baseline. The prompt (prompts/chapter_state.md) folds each character's appearance FORWARD from the previous chapter's ending state — a signature like 'rip__bearded_rusty_gun' must be reused verbatim by every later chapter, never reinvented. This node exists because the OLD whole-film character_state (one llm.generate call emitting one ledger entry per shot per character, repeating each character's full ~800-char appearance verbatim every entry) could not fit a real novel's shot count in any fixed maxTokens — splitting per-chapter, mirroring chapter_bible/chapter_screenplay, is the fix; plan.chapter_merge (mode:states) folds the per-chapter ledgers back into the one whole-film plans/character_state.json downstream nodes already expect. concurrency is explicitly 1 for readers — the engine already force-clamps any node with a previousN input to serial regardless of this value, since chapter N+1's call depends on chapter N's own completed ledger output.",
+          "promptTemplate": "prompts/chapter_state.md",
+          "outputSchema": "schemas/chapter_state.schema.json",
+          "tier": "medium",
+          "outputFormat": "json",
+          "temperature": 0.2,
+          "structuredMode": "schema",
+          "maxTokens": 12000,
+          "concurrency": 1
+        }
+      },
+      "displayCapability": "character.state"
+    },
+    {
+      "id": "character_state",
+      "displayName": "Character Appearance State (ledger, merged across chapters)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "chapter_state",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "chapters",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/character_state.json"
+      },
+      "runner": {
+        "tool": "plan.chapter_merge",
+        "config": {
+          "mode": "states",
+          "outputPath": "plans/character_state.json",
+          "partsInput": "chapter_state",
+          "chaptersInput": "chapters",
+          "outputSchema": "schemas/character_state.schema.json"
+        }
+      },
+      "displayCapability": "character.state"
+    },
+    {
+      "id": "character_states_plan",
+      "displayName": "Distinct Character States",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "character_state",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/character_states.json"
+      },
+      "runner": {
+        "tool": "plan.character_states",
+        "config": {
+          "outputPath": "plans/character_states.json",
+          "ledgerInput": "character_state"
+        }
+      },
+      "displayCapability": "character.state"
+    },
+    {
+      "id": "character_state_prompt",
+      "displayName": "Character State Edit Prompts",
+      "kind": "collection",
+      "itemSource": "character_states_plan",
+      "itemKey": "states",
+      "inputs": [
+        {
+          "from": "character_states_plan",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/states/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.10.0: prompts/character_state_prompt.md rewritten around the NEXT-LAYER rule — when a garment comes off, describe the most natural next layer INWARD for this character (one step only), decided by garment type, sex, period, region, station and climate: a man's shirt off reveals his bare chest; a woman's top off reveals her period-appropriate breast covering (bra / chemise / choli); trousers or a skirt off reveal that period's lower undergarment and almost never bare skin; gloves/boots/hat have no intermediate layer. Multi-layer costume (Victorian, winter, ceremonial) steps inward ONCE, never collapsing to skin. Validated in dhee-cofounder/artifacts/state-edit-reveal-bakeoff/FINDINGS.md — read it before editing this prompt. TWO TRAPS documented there: (1) NEVER quote a bad output inside this prompt even as a warning — four separate authoring models reproduced verbatim every failure phrase and every worked-example garment the prompt named, which is why this file now contains no example garment descriptions at all; (2) the old rule mandating a negative clause ('...with no trousers') was itself what produced the bare-legs failure — the negative clause must attach to the REVEALED LAYER and deny only the one garment that came off. tier 'heavy' should resolve to thinkingcap-27b OR qwen-27b — both score 4/4 fully clean on the four validation states, re-measured against THIS version of the prompt. qwen-35b scores 2/4 (it describes a bare torso where a woman's top comes off instead of her breast covering, and writes 'trousers are removed', a banned diff word) — the SMALLER qwen is the better author here, so do not assume parameter count tracks quality on this task. g4-meromero is unusable: incoherent output, and it returns EMPTY content unless chat_template_kwargs.enable_thinking=false is set, because it spends the entire token budget in reasoning_content on a prompt this long (reasoning_budget:0 is silently ignored by the gateway; '/no_think' only half works). Every model tested improved once the prompt's example garment descriptions were purged, which is the strongest evidence for trap (1).",
+          "promptTemplate": "prompts/character_state_prompt.md",
+          "outputSchema": "schemas/character_state_prompt.schema.json",
+          "tier": "heavy",
+          "outputFormat": "json",
+          "structuredMode": "schema",
+          "temperature": 0.3,
+          "concurrency": 4,
+          "maxTokens": 6000
+        }
+      },
+      "displayCapability": "character.prompt",
+      "headlineField": "imagePrompt"
+    },
+    {
+      "id": "character_state_view_plan",
+      "displayName": "Character State View Plan (per-view tile crop + prompt assembly)",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "character_states_plan",
+          "usage": "input"
+        },
+        {
+          "from": "character_state_prompt",
+          "usage": "input",
+          "scope": "all"
+        },
+        {
+          "from": "character_anchor_image",
+          "usage": "reference",
+          "scope": "all"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "plans/character_state_views.json"
+      },
+      "runner": {
+        "tool": "image.sheet_split",
+        "config": {
+          "_comment": "v0.6.0: replaces the old single-call comfy.image_edit whole-sheet edit. Measured (dhee-cofounder/artifacts/krea-sheet-state-edit-probe/FINDINGS.md) to fail two independent ways: denoise 1.0 from an EMPTY latent re-imagines the sheet instead of editing it (layout collapses), and even once that is fixed, one instruction cannot bind to N repeated sheet instances (a change lands on some views, not all). The fix is PER-VIEW tile edits expressed as a REAL DAG fan-out (12 states x 4 views = 48 comfy.image_edit calls) rather than hidden inside one runner -- a collection cannot fan N-per-item off another collection, so this STAGE crops+upscales each state's base sheet into its 4 view tiles and assembles each view's edit prompt (identity-only text from character_state_prompt + the fixed per-view clause below + the hard studio constraint) into one flat plan.views[] array; character_state_view_tile/character_state_view_prompt then fan 48 real per-item instances off that array (a stage's own scope:'matching' input can't itself expose one filtered entry to a downstream node -- same reason dhee-runner-video-split/dhee-runner-audio-split exist), and comfy.image_edit + workflows/krea2_edit.json are consumed completely UNCHANGED, genuinely 1:1 (one tile in, one edited tile out). denoise stays krea2_edit.json's own default (1.0) -- FINDINGS round 4 found 1.0 with a clean identity-only instruction handles additive, subtractive AND full-replacement deltas uniformly, so no override is wired here.",
+          "outputPath": "plans/character_state_views.json",
+          "statesInput": "character_states_plan",
+          "promptsInput": "character_state_prompt",
+          "anchorsInput": "character_anchor_image",
+          "views": 4,
+          "viewNames": [
+            "front_full",
+            "left_profile_full",
+            "back_full",
+            "closeup_front"
+          ],
+          "viewClauses": [
+            "This is the full-body view of the character standing and facing the camera directly; keep that exact framing and camera angle.",
+            "This is the full-body view of the character in left-facing profile, seen from their side; keep that exact framing and camera angle.",
+            "This is the full-body view of the character from BEHIND, facing away from the camera, with the back of their head and the back of their clothing visible; keep that exact framing and camera angle, and show only what is visible from behind.",
+            "This is the medium close-up view of the character, head to waist, facing the camera; keep that exact framing and crop."
+          ],
+          "studioConstraint": "The character is photographed in a plain neutral studio against a plain neutral seamless backdrop, with soft even neutral studio lighting and no environment, no ground texture, no cast shadows, no outdoor location and no scene whatsoever. Do not change the backdrop, the lighting or the framing of this photograph.",
+          "tileDir": "assets/images/state_view_tiles_src"
+        }
+      },
+      "displayCapability": "character.state"
+    },
+    {
+      "id": "character_state_view_tile",
+      "displayName": "Character State View Tiles (per-view crop, 4 per state)",
+      "kind": "collection",
+      "itemSource": "character_state_view_plan",
+      "itemKey": "views",
+      "inputs": [
+        {
+          "from": "character_state_view_plan",
+          "usage": "input",
+          "scope": "matching"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/state_view_tiles/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "image.sheet_view_ref",
+        "config": {
+          "outputPath": "assets/images/state_view_tiles/{{item_id}}.png",
+          "viewsInput": "character_state_view_plan",
+          "mode": "tile"
+        }
+      },
+      "displayCapability": "character.image"
+    },
+    {
+      "id": "character_state_view_prompt",
+      "displayName": "Character State View Prompts (per-view edit instruction, 4 per state)",
+      "kind": "collection",
+      "itemSource": "character_state_view_plan",
+      "itemKey": "views",
+      "inputs": [
+        {
+          "from": "character_state_view_plan",
+          "usage": "input",
+          "scope": "matching"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/state_views/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "image.sheet_view_ref",
+        "config": {
+          "outputPath": "prompts/state_views/{{item_id}}.json",
+          "viewsInput": "character_state_view_plan",
+          "mode": "prompt"
+        }
+      },
+      "displayCapability": "character.prompt",
+      "headlineField": "imagePrompt"
+    },
+    {
+      "id": "character_state_view",
+      "displayName": "Character State View Edits (krea2 identity edit, per view tile)",
+      "kind": "collection",
+      "itemSource": "character_state_view_plan",
+      "itemKey": "views",
+      "inputs": [
+        {
+          "from": "character_state_view_prompt",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "character_state_view_tile",
+          "usage": "reference",
+          "scope": "all"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/state_view_edits/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "comfy.image_edit",
+        "config": {
+          "_comment": "v0.6.0: comfy.image_edit and workflows/krea2_edit.json are UNMODIFIED and used exactly as any other single-image identity edit -- this node is genuinely 1:1 (one view tile in, one edited tile out), 48 instances (12 states x 4 views), fed by character_state_view_tile (the reference image, routed via referenceInputs) and character_state_view_prompt (the pre-assembled per-view prompt). width/height are the deterministic long-edge-1024-snapped-to-16 upscale of this bundle's fixed 384x864 tile size (a 1536x864 4-view anchor sheet always yields exact 384x864 panels) -- see dhee-runner-sheet-tiles' geometry.upscaleLongEdge.",
+          "workflowPath": "workflows/krea2_edit.json",
+          "manifestPath": "workflows/krea2_edit.manifest.json",
+          "endpoint": "self.local",
+          "promptInput": "character_state_view_prompt",
+          "referenceInputs": {
+            "tile": "character_state_view_tile"
+          },
+          "additionalArgs": {
+            "width": 448,
+            "height": 1024,
+            "seed": 42
+          },
+          "concurrency": 2
+        }
+      },
+      "displayCapability": "character.image"
+    },
+    {
+      "id": "character_state_image",
+      "displayName": "Character State Sheets (recomposited)",
+      "kind": "collection",
+      "itemSource": "character_state_prompt",
+      "inputs": [
+        {
+          "from": "character_states_plan",
+          "usage": "input"
+        },
+        {
+          "from": "character_state_view_plan",
+          "usage": "input"
+        },
+        {
+          "from": "character_state_view",
+          "usage": "reference",
+          "scope": "all"
+        },
+        {
+          "from": "character_anchor_image",
+          "usage": "reference",
+          "scope": "all"
+        }
+      ],
+      "outputs": {
+        "format": "image",
+        "pattern": "assets/images/states/{{item_id}}.png"
+      },
+      "runner": {
+        "tool": "image.sheet_join",
+        "config": {
+          "_comment": "v0.6.0: replaces the single comfy.image_edit whole-sheet call. Downscales this state's 4 edited view tiles (character_state_view) back to their original panel boxes and pastes them into a fresh canvas of the base anchor sheet's own dimensions -- deterministic recomposite, no model call. Errors rather than silently compositing if fewer than 4 edited tiles resolve, and errors if the composite comes out pixel-identical to the base sheet (a transient upstream failure must never read as a real, if boring, result -- see FINDINGS.md's 'Probe hygiene note'). Output pattern UNCHANGED from the prior single-call version so shot_clip needs no change.",
+          "outputPath": "assets/images/states/{{item_id}}.png",
+          "statesInput": "character_states_plan",
+          "viewPlanInput": "character_state_view_plan",
+          "editedTilesInput": "character_state_view",
+          "anchorsInput": "character_anchor_image",
+          "views": 4
+        }
+      },
+      "displayCapability": "character.image"
+    },
+    {
+      "id": "scene_video_prompt",
+      "displayName": "Scene Video Prompt (H3-ready: timecoded multi-cut shot list + reference jobs + audio)",
+      "kind": "collection",
+      "itemSource": "scenes_plan",
+      "itemKey": "sections",
+      "inputs": [
+        {
+          "from": "scenes_plan",
+          "usage": "input"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        },
+        {
+          "from": "character_state",
+          "usage": "context"
+        },
+        {
+          "from": "art_style",
+          "usage": "context"
+        },
+        {
+          "from": "narration",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "json",
+        "pattern": "prompts/scenes/{{item_id}}.json"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "Iterates SECTIONS, not shots -- that is the whole H3 change. The section's planned shots (visible in scenes_plan) become the CUTS inside one render, and their summed duration is the section's budget, clamped to H3's 5-15s window by the renderer. scenes_plan is wired WITHOUT scope:'matching' on purpose: it is a STAGE with one instance, so the whole plan arrives and the template locates this call's section by {{item_id}} -- exactly how scene_detail already reads scene_outline. The template must never emit a slot number ('Image 1'/'Picture 2'): comfy.minimax_h3_r2v prepends its own <Picture N> binding clause built from references[].appearsAs + references[].job, after state substitution and background-last routing, and a second contradictory numbering breaks identity.",
+          "promptTemplate": "prompts/scene_video_prompt.md",
+          "outputSchema": "schemas/scene_video_prompt.schema.json",
+          "tier": "heavy",
+          "outputFormat": "json",
+          "concurrency": 2,
+          "structuredMode": "schema",
+          "maxTokens": 20000
+        }
+      },
+      "displayCapability": "shot.video_prompt",
+      "headlineField": "videoPrompt"
+    },
+    {
+      "id": "scene_clip",
+      "displayName": "Scene Clips (MiniMax H3 multi-cut reference-to-video, up to 15s, native AV)",
+      "kind": "collection",
+      "itemSource": "scenes_plan",
+      "itemKey": "sections",
+      "inputs": [
+        {
+          "from": "scene_video_prompt",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "character_anchor_image",
+          "usage": "reference",
+          "scope": "all"
+        },
+        {
+          "from": "object_anchor_image",
+          "usage": "reference",
+          "scope": "all"
+        },
+        {
+          "from": "location_anchor_image",
+          "usage": "reference",
+          "scope": "all"
+        },
+        {
+          "from": "character_state_image",
+          "usage": "reference",
+          "scope": "all"
+        },
+        {
+          "from": "character_states_plan",
+          "usage": "input"
+        },
+        {
+          "from": "scenes_plan",
+          "usage": "input"
+        }
+      ],
+      "outputs": {
+        "format": "video",
+        "pattern": "assets/videos/scenes/{{item_id}}.mp4"
+      },
+      "runner": {
+        "tool": "comfy.minimax_h3_r2v",
+        "config": {
+          "_comment": "One H3 call per SECTION. shotPlanInput lets the runner sum the section's shot durations into the clip length when the authored prompt does not state one; statePlanInput/stateImagesInput give the same per-state plate substitution comfy.ltx_msr does, merged across the section's shots (last state wins) because one render can only hold one plate per character. maxRefs is 9, H3's real limit, against MSR's 5. scheduler 'beta' over the stock template's 'simple' is Comfy's own recommendation for reference-heavy prompts. 1344x768 is H3's native geometry (768 short edge, capped 768x1344, /32).",
+          "outputPath": "assets/videos/scenes/{{item_id}}.mp4",
+          "workflowPath": "workflows/minimax_h3_r2v.json",
+          "endpoint": "self.local",
+          "promptInput": "scene_video_prompt",
+          "promptField": "videoPrompt",
+          "durationField": "duration",
+          "bindingClause": true,
+          "referenceInputs": {
+            "character": "character_anchor_image",
+            "object": "object_anchor_image",
+            "location": "location_anchor_image"
+          },
+          "statePlanInput": "character_states_plan",
+          "stateImagesInput": "character_state_image",
+          "bgTypes": [
+            "location"
+          ],
+          "maxRefs": 9,
+          "shotPlanInput": "scenes_plan",
+          "seconds": 12,
+          "minSeconds": 5,
+          "maxSeconds": 15,
+          "fps": 24,
+          "width": 1344,
+          "height": 768,
+          "refImageSize": "match",
+          "steps": 20,
+          "samplerName": "res_multistep",
+          "scheduler": "beta",
+          "seed": 42,
+          "timeoutMinutes": 45
+        }
+      },
+      "displayCapability": "shot.video"
+    },
+    {
+      "id": "final_video",
+      "displayName": "Final Cut",
+      "kind": "stage",
+      "inputs": [
+        {
+          "from": "scene_clip",
+          "usage": "input",
+          "scope": "all"
+        }
+      ],
+      "outputs": {
+        "format": "video",
+        "pattern": "assets/videos/final/final_video.mp4"
+      },
+      "runner": {
+        "tool": "ffmpeg.concat",
+        "config": {}
+      },
+      "displayCapability": "final.video"
+    }
+  ],
+  "display": {
+    "thumbnail": {
+      "from": [
+        "final.video",
+        "shot.first_frame"
+      ],
+      "pick": "first_completed"
+    },
+    "stats": [
+      {
+        "label": "sections",
+        "source": "scene.plan",
+        "path": "sections.length"
+      }
+    ]
+  }
+}
