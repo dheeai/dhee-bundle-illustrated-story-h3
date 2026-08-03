@@ -31,6 +31,173 @@ section**, so one section already *was* about one H3 call's worth of film. The
 shots the planner budgets for a section now become the **cuts inside** that one
 render rather than separate clips.
 
+## Requirements — what you need on your ComfyUI box
+
+Everything here is local: this bundle calls no hosted API. The runners are
+public, but they are thin — the weights and the two custom node packs are yours
+to install, and there is a real gap in the H3 diffusion model (below) that you
+have to make a decision about before your first run.
+
+Two things are deliberately kept apart in this section. **"Installed"** is what
+the box this bundle was developed on actually reports, which is ground truth for
+*filenames* — the workflows hardcode them, and a mismatch is an instant node
+error. **"Source"** is where a stranger can download that file, which is a
+different question and, for three files, has a different answer.
+
+Every source below was checked by fetching the repository's own file listing and
+confirming the exact filename appears in it. Anything not confirmable that way is
+marked and told what to do instead, rather than given a plausible-looking URL.
+
+**ComfyUI ≥ 0.30.0.** That is Comfy's own stated floor for MiniMax H3
+([tutorial](https://docs.comfy.org/tutorials/video/minimax/minimax-h3)), and it
+is the version this bundle was built against.
+
+### Custom node packs — there are only two
+
+| pack | provides | install |
+|---|---|---|
+| **ComfyUI_NVIDIA_RTX_Nodes** (`comfyui_nvidia_rtx_nodes`) | `RTXVideoSuperResolution` | [Comfy-Org/Nvidia_RTX_Nodes_ComfyUI](https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI) — or search "RTX" in ComfyUI Manager |
+| **Krea 2 Identity Edit** (`comfyui-krea2edit`) | `Krea2EditGroundedEncode`, `Krea2EditModelPatch` | [lbouaraba/comfyui-krea2edit](https://github.com/lbouaraba/comfyui-krea2edit) |
+
+Both were confirmed against the live box, which reports each node's owning
+python module — `custom_nodes.comfyui_nvidia_rtx_nodes` and
+`custom_nodes.comfyui-krea2edit` respectively, matching each repo's own
+`pyproject.toml` `name`. The Krea2 pack and the `krea2_identity_edit_*` LoRAs
+share an author, so the pack and its weights version together.
+
+`RTXVideoSuperResolution` **requires an NVIDIA RTX GPU** — the pack's README says
+so outright, and the node is a driver/TensorRT feature (its dependency is
+`nvidia-vfx`), not a diffusion model. There is no checkpoint, no sampler and no
+seed, which is why the upscale pass is seconds rather than minutes and is
+deterministic. On anything that is not an RTX card, `scene_upscaled` has no
+fallback; drop the node.
+
+**Everything else is native ComfyUI, including the two that look like they should
+not be.** `MiniMaxH3ReferenceToVideo` is core
+(`comfy_extras/nodes_minimax_h3.py`) and so is `EasyCache`
+(`comfy_extras/nodes_easycache.py`) — neither needs a pack, and both are present
+in 0.30.0. The rest are long-standing core nodes and come with any current
+ComfyUI: `PrimitiveStringMultiline`, `LoadVideo`, `GetVideoComponents`,
+`CreateVideo`, `SaveVideo`, `VAEDecodeAudio`, `ModelSamplingAuraFlow`,
+`EmptySD3LatentImage`, `LoraLoaderModelOnly`, `RandomNoise`, `BasicGuider`,
+`BasicScheduler`, `KSamplerSelect`, `SamplerCustomAdvanced`. The three
+`CLIPLoader` types the workflows select — `minimax`, `krea2`, `lumina2` — are all
+in 0.30.0's type enum.
+
+### Model files
+
+Four workflows, four model sets. `rtx_vsr_video.json` needs none.
+
+| file | goes in | source | verified? |
+|---|---|---|---|
+| **`minimax_h3_r2v.json`** — `scene_clip` | | | |
+| `minimax_h3_ref2va_pruned_nvfp4.safetensors` | `models/diffusion_models/` | [lilcheaty/MiniMax-H3-NVFP4](https://huggingface.co/lilcheaty/MiniMax-H3-NVFP4) (repo root) | **VERIFIED** — exact filename, 12.5 GB. Community requant, not Comfy-Org. Read the caveat below. |
+| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | `models/text_encoders/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/text_encoders) | **VERIFIED** — 15.7 GB |
+| `minimax_h3_video_vae_fp16.safetensors` | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/vae) | **VERIFIED** — 5.21 GB |
+| `minimax_h3_audio_vae_fp32.safetensors` | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/vae) | **VERIFIED** — 605 MB |
+| **`krea2_edit.json`** — `character_state_view` | | | |
+| `krea2_turbo_fp8.safetensors` | `models/diffusion_models/` | [AlperKTS/Krea2_FP8](https://huggingface.co/AlperKTS/Krea2_FP8) (repo root) | **VERIFIED** — exact filename, 12.9 GB. Not the same file as Comfy-Org's; see below. |
+| `qwen3vl_4b_fp8_scaled.safetensors` | `models/text_encoders/` | [Comfy-Org/Krea-2](https://huggingface.co/Comfy-Org/Krea-2/tree/main/text_encoders) | **VERIFIED** — 5.24 GB (byte-identical copy also in AlperKTS/Krea2_FP8) |
+| `wan_2.1_vae.safetensors` | `models/vae/` | [Comfy-Org/Wan_2.1_ComfyUI_repackaged](https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/tree/main/split_files/vae) | **VERIFIED** — 254 MB. Comfy's Krea 2 tutorial uses `qwen_image_vae.safetensors` instead; see below. |
+| `krea2_identity_edit_v1_2.safetensors` | `models/loras/` | [conradlocke/krea2-identity-edit](https://huggingface.co/conradlocke/krea2-identity-edit) | **VERIFIED** — 1.83 GB. Same author as the node pack. |
+| `kroma-v0.1_krea2.safetensors` | `models/loras/` | [lodestones/Kroma](https://huggingface.co/lodestones/Kroma) — as **`kroma-v0.1.safetensors`** | **RENAME** — upstream file verified (1.88 GB); our filename is a local rename, not an upstream name |
+| **`zimage_tti.json`** — the three anchor stages | | | |
+| `zit_turbo_stableyogi_bf16.safetensors` | `models/diffusion_models/` | [Civitai 2221503](https://civitai.com/models/2221503/zimage-turbo-by-stable-yogi), BF16 version — ships as **`zimageTurboByStable_2602BF16.safetensors`** | **RENAME / SUBSTITUTE** — see below |
+| `qwen_3_4b.safetensors` | `models/text_encoders/` | [Comfy-Org/z_image_turbo](https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/text_encoders) | **VERIFIED** — 8.05 GB |
+| `ae.safetensors` | `models/vae/` | [Comfy-Org/z_image_turbo](https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/vae) | **VERIFIED** — 335 MB |
+
+### The four things that are not clean
+
+**1. The H3 diffusion model is a community requant, and the numbers in this
+README were not measured on it.** `minimax_h3_ref2va_pruned_nvfp4.safetensors`
+exists at exactly that name in `lilcheaty/MiniMax-H3-NVFP4`, but **Comfy-Org's
+own MiniMax-H3 repo has no nvfp4 diffusion model at all** — its
+`diffusion_models/` holds only `bf16`, `int8_convrot`, `pruned_fp8_scaled` and
+`pruned_int8_convrot`, for each of `fl2va` and `ref2va`. The nvfp4 build is
+doubly quantized (bf16 → int8_convrot → nvfp4) by a third party, its own README
+says it was spot-checked on three matched seeds rather than evaluated properly,
+and **native nvfp4 dispatch needs a Blackwell GPU** (50-series, RTX PRO 6000,
+B200); on older cards the format is emulated, so the file is not a speedup there.
+
+If you would rather not take that on, use
+**`minimax_h3_ref2va_pruned_int8_convrot.safetensors`** from
+[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/diffusion_models)
+(21 GB) and change `UNET.inputs.unet_name` in your copy of
+`workflows/minimax_h3_r2v.json`. That is Comfy's own prescribed R2V file, it is
+what Comfy's tutorial documents, and **this bundle previously ran on exactly
+that file** — every measurement in the probe and in the comparison table further
+down was taken on it. So it is a proven substitution rather than a guess, and it
+is arguably the better default: the int8 weights already dispatch to native
+kernels, so there is no dequantise-to-bf16 tax to escape. Keep
+`weight_dtype: default` either way — the fp8 options would re-cast an
+already-quantised model.
+
+The reproducibility gap this leaves is real and worth stating plainly: the
+workflow as committed names weights that the model's own publisher does not
+distribute, and nothing in this repo has been benchmarked on them.
+
+**2. `krea2_turbo_fp8` and `krea2_turbo_fp8_scaled` are genuinely different
+files.** Comfy-Org/Krea-2 ships `krea2_turbo_fp8_scaled.safetensors`
+(13,141,730,784 bytes, sha256 `eb4dd8c6…`); AlperKTS/Krea2_FP8 ships
+`krea2_turbo_fp8.safetensors` (12,900,096,996 bytes, sha256 `2d352350…`). Not a
+rename — different quantisations. Our workflow names the AlperKTS one, so the
+zero-friction path is to take it from there. If you prefer Comfy-Org's official
+scaled build, download it and edit `unet_name`; do not rename one to the other
+and expect the two to be interchangeable.
+
+**3. The Krea2 VAE.** Comfy's Krea 2 tutorial pairs the model with
+`qwen_image_vae.safetensors`; our workflow names `wan_2.1_vae.safetensors`. These
+are also two different files (sha256 `a70580f0…` vs `2fc39d31…`, differing in
+size by ~9 KB) even though Krea 2's VAE is architecturally the Wan-2.1 one. Both
+are installed on the development box and the workflow as committed loads
+`wan_2.1_vae.safetensors`, so that is what the table points at. Following the
+official tutorial instead — `qwen_image_vae.safetensors` from
+[Comfy-Org/Krea-2](https://huggingface.co/Comfy-Org/Krea-2/tree/main/vae), and an
+edit to `vae_name` — is the more conservative choice and untested here.
+
+**4. Two filenames are local renames, one of them of a Civitai finetune.**
+`kroma-v0.1_krea2.safetensors` is `lodestones/Kroma`'s `kroma-v0.1.safetensors`
+with a suffix added; rename on download. `zit_turbo_stableyogi_bf16.safetensors`
+is a Civitai Z-Image Turbo finetune, and Civitai's own filenames are
+version-stamped (`zimageTurboByStable_2602BF16.safetensors`, 12.02 GB), so
+**there is no public URL that serves our exact filename** — download the BF16
+version and rename it. If you would rather not depend on a Civitai account or a
+finetune that may be re-versioned under you, substitute base Z-Image Turbo:
+`z_image_turbo_bf16.safetensors` (12.3 GB) from
+[Comfy-Org/z_image_turbo](https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/diffusion_models),
+which is VERIFIED and pairs with the same `qwen_3_4b` encoder and `ae` VAE. The
+anchor plates will look different — that finetune was chosen for skin and
+lighting — but the pipeline is unaffected.
+
+### Hardware reality
+
+This is a 32 GB-class NVIDIA box, and a film is an afternoon.
+
+- **H3 does not fit in VRAM and that is fine.** The model set stages **39.5 GB
+  against 32 GB** with ComfyUI's async weight offloading. Measured across four
+  runs there is **no VRAM cliff** — offloading is a roughly constant tax, not a
+  threshold you fall off. It also means attention is not the bottleneck:
+  SageAttention explicitly on vs explicitly off measured 2.01 vs 2.02 s/it, i.e.
+  nothing. Less than 32 GB is untested.
+- **Resolution is the only real cost dial, and it is superlinear.** A 5s,
+  124-frame clip took **55s at 832×480** and **205s at 1344×768** — cost scales
+  as roughly **pixels^1.3**, partly because `ref_image_size: match` scales
+  reference tokens to the output's pixel area and those ride through all 20
+  sampling steps.
+- **So budget hours, not minutes.** Sections run up to 15s — three times the
+  clip that measured 205s — and a film is around ten sections. Render at 480p
+  while you are iterating on prompts and pay for native geometry only on a final
+  cut.
+- **The upscale pass is nearly free by comparison.** RTX VSR took a real 832×480,
+  12.25s H3 scene to **1920×1080 in 12 seconds**, audio preserved. That is what
+  makes "render cheap, upscale after" a live option rather than a slogan.
+
+All of the above was measured on the **int8 + `beta`** graph
+(`dhee-cofounder/artifacts/h3-r2v-probe/README.md`,
+`artifacts/rtx-vsr-probe/out/results.json`). The committed workflow now uses
+nvfp4 + `EasyCache` + `bong_tangent`, none of which those runs cover, so treat
+the timings as the right order of magnitude and the fidelity as unmeasured.
+
 ## The prompt stage is the interesting part
 
 `prompts/scene_video_prompt.md` encodes MiniMax's own documented H3 guidance,
