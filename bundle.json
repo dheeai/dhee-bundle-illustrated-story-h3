@@ -1276,7 +1276,7 @@
           "workflowPath": "workflows/minimax_h3_r2v.json",
           "endpoint": "self.local",
           "promptInput": "scene_video_prompt",
-          "promptField": "videoPrompt",
+          "promptField": "detailedDescription",
           "durationField": "duration",
           "bindingClause": true,
           "referenceInputs": {
