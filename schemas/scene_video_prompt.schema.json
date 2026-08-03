@@ -3,17 +3,33 @@
   "type": "object",
   "additionalProperties": true,
   "required": [
-    "videoPrompt",
+    "summary",
+    "detailedDescription",
+    "overallSoundscape",
+    "nonDiegeticMusic",
     "shotStructure",
     "references",
     "duration",
     "purpose"
   ],
   "properties": {
-    "videoPrompt": {
+    "summary": {
       "type": "string",
-      "minLength": 1800,
-      "description": "The COMPLETE prompt for ONE MiniMax H3 generation, written directly as prose against the SKELETON in the instructions -- reproduce that skeleton's headings verbatim, in order, with a blank line between blocks, replacing each bracketed placeholder with your writing. The blocks are: the style/look line (no heading; ONE OR TWO sentences; each attribute stated once; never any hex colour codes); 'Scene overview:'; the storyboard heading; the TIMECODED blocks written literally as '[0s-3.4s]' and tiling the whole duration with no gaps or overlap; 'Camera:'; 'Lighting:'; 'Audio:'; 'Performance:'; and the closing do-not paragraph. Any spoken line goes ON ITS OWN LINE in double quotes inside the timecode block where it is spoken -- never gathered into the audio paragraph (H3 needs to know WHEN the line lands) and never dropped or paraphrased when the scene plan authored one. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number: the renderer prepends its own '<Picture N>' binding clause built from your references array, and a second contradictory numbering is the fastest way to break identity -- re-describe every visible character, object and location BY APPEARANCE instead. Keep the whole thing under ~6000 characters (deliberately not enforced by maxLength -- see the top-level _comment; comfy.minimax_h3_r2v trims to H3's ~7000-char window, prose-first, so the binding clause always survives)."
+      "minLength": 60,
+      "description": "The `summary` section: ONE short English paragraph, beginning with a square-bracketed task-type prefix. For this bundle the reference plates guide generation without being concrete frames, so the prefix is normally `[reference generation]`; add ` + audio reference` only if a voice or music reference is actually supplied. Summarise the target video, its subjects and its shot flow using the `<Subject N>` labels -- do NOT introduce new reference labels here, and do not restate the plate definitions."
+    },
+    "detailedDescription": {
+      "type": "string",
+      "minLength": 1940,
+      "description": "MINIMUM 1900 CHARACTERS (~315 English words) -- this floor is enforced, not advisory. The guide asks for 350-500 words and measured g4-meromero output came in at ~206 words (1266 chars) even after the instruction was strengthened, so the length is enforced by the schema instead: llm.generate validates with ajv INSIDE its retry loop and, on failure, sends the model its own draft plus the specific error, which is a far easier task than hitting a length from cold. Do not pad -- reach the length by covering, FOR EVERY SHOT, all seven of: composition and framing; each subject's appearance AND position in frame; the environment and its light; the action as a state change (a beginning state and an end state); the camera motion; the sound in that moment; and where a referenced subject actually appears or takes effect. That is ~120-200 words per shot.\nThe `detailed_description` section -- the main body, and the only place shot-synced sound and dialogue belong. Normally 350-500 English words; do not pad to hit a count, and do let a dialogue-dense scene run long enough to fit the whole spoken timeline.\nFORMAT, from the official guide:\n  * Open with ONE OR TWO English sentences establishing the style and look, BEFORE the first shot marker.\n  * `[Shot 1]` marks the opening shot and takes NO timestamp. Every later shot is `[Shot N] At MM:SS.mmm, the shot cuts to ...` with a STRICTLY INCREASING cut time inside the duration. Use `the camera cuts to` / `the shot cuts to` / `the shot transitions to`; a cut must introduce new information about subject, space, state, viewpoint or time -- if only distance or a slight angle changes, use camera motion instead.\n  * Write camera motion as natural English inside the shot using the controlled vocabulary: Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right, Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot, Shake Slightly/Strongly, POV, Roll Clockwise/Counterclockwise -- optionally `with small amplitude` / `with large amplitude` and `at slow speed` / `at fast speed`, omitted when medium/normal. Never stack these as labels at the end of a sentence.\n  * Cite `<Subject N>` at each subject's first clear appearance and keep using the same label afterwards. NUMBER THEM IN THE ORDER YOU LIST `references[]` -- the renderer emits subject_definitions in that order and remaps your labels if routing changes it.\n  * SPEAKERS AND DIALOGUE: give each vocal source a stable `(S1)`, `(S2)` id, compound `(S1,S2)` when they speak together. Put the identifying phrase, action and delivery OUTSIDE the tag and only the language tag plus the exact words INSIDE: `<Subject 2> (S1) turns and says: <d>[English] I get off at the next station.</d>`. Preserve the authored line's words and punctuation verbatim, in its original language. For voiceover use the exact phrase `says in an off-screen voiceover` and immediately state that the character's lips remain closed. Use `<scenetrans>` on both sides of a line that crosses a cut, and `<cutoff>` when speech is truncated by the video ending.\n  * On-screen text that is genuinely visible goes in English double quotes, verbatim.\nDo NOT write ambience or audience-only score here -- those are the other two sections. Do not repeat dialogue outside `<d>`."
+    },
+    "overallSoundscape": {
+      "type": "string",
+      "description": "The `overall_soundscape` section: 1-4 English sentences in ONE paragraph summarising ambience, physical action sounds and non-verbal human sounds across the whole video -- wind, rain, traffic, footsteps, fabric, impacts, breathing, laughter, panting. Dialogue, singing and diegetic music belong in detailed_description and must NOT be repeated here. Use `N/A` only if complete silence is genuinely wanted."
+    },
+    "nonDiegeticMusic": {
+      "type": "string",
+      "description": "The `non_diegetic_music` section: 1-3 English sentences describing score the characters cannot hear. State instrumentation, speed, rhythm and dynamic change -- NOT abstract mood words and not the emotional function. Music a character can hear (radio, phone, someone singing) is diegetic and belongs in detailed_description instead. Use `N/A` when there is no score."
     },
     "shotStructure": {
       "type": "string",
@@ -61,6 +77,16 @@
             "type": "string",
             "minLength": 8,
             "description": "What this plate is FOR in this scene, as a phrase that completes 'Use it for ___'. This is H3's single highest-leverage instruction -- assigning every reference an explicit job measurably beats handing the model images and a description. Be specific and DIFFERENT per plate: 'the woman's face, build and wardrobe, held identical across every cut' / 'the basket's exact weave, colour and size whenever it is in frame' / 'the location, its architecture, set dressing, palette and light'. Do NOT write a slot number here -- the renderer numbers the plates itself."
+          },
+          "retention": {
+            "type": "string",
+            "enum": [
+              "fully_preserved",
+              "partially_preserved",
+              "attribute_transfer",
+              "weak_reference"
+            ],
+            "description": "How faithfully this plate is held, using the guide's FIXED English markers. 'fully_preserved' for an anchor plate whose identity must not drift (the normal case). 'partially_preserved' when some defined characteristic deliberately changes. 'attribute_transfer' when its characteristics move onto a different subject. 'weak_reference' when only broad style/category/atmosphere similarity is kept -- typical for a style or mood plate. Omit to default to fully_preserved."
           }
         }
       }
@@ -77,5 +103,5 @@
       "description": "What this scene is FOR in the story -- the single beat it lands."
     }
   },
-  "description": "Scene video prompt for MiniMax H3. FIVE fields, deliberately. An earlier version carried fifteen -- styleLine, sceneOverview, camera, lighting, audio, performance, avoid, cameraMove, dialogueLines, beats -- each with its own minLength, and ALSO required videoPrompt to be those same blocks concatenated under literal headings. The per-field minLength was all it bought, and it cost the model writing everything TWICE -- which is exactly what broke. On identical input, deepseek-v4-flash wrote excellent individual fields and then a heading-less run-on videoPrompt, while thinkingcap-27b assembled the headings correctly but wrote thin fields: two models, two different divergences, one root cause. So videoPrompt is now authored DIRECTLY as fill-in-the-blanks prose against the fixed skeleton in prompts/scene_video_prompt.md, and only what the RUNNER consumes (references, duration) or what cannot be recovered from prose (shotStructure, purpose) stays structured. `beats` is gone as well: the timecodes are regexable straight out of the prose, which removes the keep-the-array-in-sync failure entirely. NEVER add maxLength, or a multi-heading `pattern`, anywhere in this file -- both make llama.cpp's JSON-schema-to-GBNF converter emit a grammar it cannot parse, and every structured call then 400s with 'Failed to initialize samplers: failed to parse grammar'."
+  "description": "Scene prompt for MiniMax H3 in OFFICIAL full-reference format (MiniMaxAI/MiniMax-H3 docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md + _base_en.md). The model authors FOUR of the six sections; the RUNNER injects subject_definitions and retention_analysis at their fixed positions, because both are functions of the FINAL reference order after subjects-first/location-last routing and the 9-ref cap -- which the author cannot know. That is also why these are separate fields rather than one prose blob: subject_definitions PRECEDES summary, so the runner interleaves rather than prepends. Earlier revisions used a `<Picture N>` binding clause for every plate; that was WRONG -- the guide reserves <Picture N> for images acting as a concrete frame anchor and says an image used only to define a character, scene, costume or style must instead be cited inside a <Subject N> definition. LENGTH KEYWORDS HAVE A HARD CEILING in llama.cpp's JSON-schema-to-GBNF converter: it expands min/maxLength into that many character repetitions, and past a limit the grammar no longer parses -- the call then 400s with 'Failed to initialize samplers: failed to parse grammar' BEFORE generating anything, so it is a hard failure and not something a retry can fix. Bisected on this box: minLength 1950 ACCEPTED, 2000 REJECTED. minLength is therefore pinned at 1900 (~315 words), deliberately under the cliff, which is why it sits just BELOW the guide's 350-word floor -- the schema cannot enforce the full range on the local path. NEVER add maxLength at all (any value bloats the grammar the same way). And never add a non-standard top-level key such as _comment: local llama.cpp ignores it but OpenRouter rejects it outright with 'strict mode: unknown keyword'."
 }

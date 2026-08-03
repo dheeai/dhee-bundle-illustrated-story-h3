@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
@@ -1204,14 +1204,14 @@
       "runner": {
         "tool": "llm.generate",
         "config": {
-          "_comment": "Iterates SECTIONS, not shots -- that is the whole H3 change. The section's planned shots (visible in scenes_plan) become the CUTS inside one render, and their summed duration is the section's budget, clamped to H3's 5-15s window by the renderer. scenes_plan is wired WITHOUT scope:'matching' on purpose: it is a STAGE with one instance, so the whole plan arrives and the template locates this call's section by {{item_id}} -- exactly how scene_detail already reads scene_outline. The template must never emit a slot number ('Image 1'/'Picture 2'): comfy.minimax_h3_r2v prepends its own <Picture N> binding clause built from references[].appearsAs + references[].job, after state substitution and background-last routing, and a second contradictory numbering breaks identity.",
+          "_comment": "Iterates SECTIONS, not shots -- that is the whole H3 change. The section's planned shots (visible in scenes_plan) become the CUTS inside one render, and their summed duration is the section's budget, clamped to H3's 5-15s window by the renderer. scenes_plan is wired WITHOUT scope:'matching' on purpose: it is a STAGE with one instance, so the whole plan arrives and the template locates this call's section by {{item_id}} -- exactly how scene_detail already reads scene_outline. The template must never emit a slot number ('Image 1'/'Picture 2'): comfy.minimax_h3_r2v prepends its own <Picture N> binding clause built from references[].appearsAs + references[].job, after state substitution and background-last routing, and a second contradictory numbering breaks identity. maxTokens LOWERED 20000 -> 6000 (2026-08-03). At 20000 g4-meromero ran away and emitted a ~21KB string that was truncated mid-token into unterminated JSON; llm.generate's retry then appended that 21KB draft as an assistant message, pushing the request to 47028 tokens against g4-meromero's 32768 context, and the recoverable parse error became a hard 400. The whole JSON for this node is ~4-5KB, so 6000 is generous and caps the runaway. NOTE the conversational retry is only free when the failed draft fits the remaining context -- on a modest-context local model a large runaway poisons its own retry, so keep maxTokens close to the real output size rather than at the model ceiling.",
           "promptTemplate": "prompts/scene_video_prompt.md",
           "outputSchema": "schemas/scene_video_prompt.schema.json",
           "tier": "heavy",
           "outputFormat": "json",
           "concurrency": 2,
           "structuredMode": "schema",
-          "maxTokens": 20000
+          "maxTokens": 6000
         }
       },
       "displayCapability": "shot.video_prompt",

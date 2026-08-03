@@ -250,19 +250,12 @@ array and write only that scene.
 Read your own `detailedDescription` back and confirm each one. These are the
 things that get missed most often; everything else above is context.
 
-1. **Find every `<d>` you wrote. Look at the words immediately before it. If
-   there is no `(S1)` / `(S2)` there, ADD ONE NOW.** A spoken line with no
-   speaker id is a line with nobody saying it — H3 has the words and no voice to
-   attach them to. The id goes on the speaker, before the verb:
-
-   `<Subject 1> (S1) looks up and says with a warm confidence: <d>[Hindi] …</d>`
-
-   Not `She speaks directly to <Subject 4> …: <d>[Hindi] …</d>` — that has no id.
-   The same speaker keeps the same id in every shot; a character who never
-   speaks gets none.
-2. **`[Shot 1]` has NO timestamp.** Not `[Shot 1] At 00:00.000` — just
-   `[Shot 1] `. Only `[Shot 2]` onward carry `At MM:SS.mmm`. If you wrote a time
-   on Shot 1, delete it now.
+1. **`[Shot 1]` has NO timestamp.** Not `[Shot 1] At 00:00.000` — just
+   `[Shot 1] `. The opening shot is where the video starts, so there is nothing
+   to time it against. Only `[Shot 2]` onward carry `At MM:SS.mmm`. If you wrote
+   a time on Shot 1, delete it now.
+2. **Every `<d>` has an `(Sx)` in front of it**, on the same speaker, before the
+   verb: `<Subject 2> (S1) says: <d>[Hindi] …</d>`.
 3. **Every planned line is verbatim** — same words, same punctuation, same
    language as the scene plan wrote it.
 4. **At least one exact camera term** from the list, capitalised as given:
