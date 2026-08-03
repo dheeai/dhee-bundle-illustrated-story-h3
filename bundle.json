@@ -40,7 +40,9 @@
       "image.sheet_join": "dhee-runner-sheet-tiles",
       "plan.character_states": "dhee-runner-ltx-reference",
       "comfy.ltx_msr": "dhee-runner-ltx-reference",
-      "plan.assemble_keyframes": "dhee-runner-plan-keyframes"
+      "plan.assemble_keyframes": "dhee-runner-plan-keyframes",
+      "comfy.minimax_h3_r2v": "dhee-runner-minimax-h3",
+      "comfy.rtx_vsr": "dhee-runner-rtx-vsr"
     }
   },
   "reviewLoopMax": 2,
