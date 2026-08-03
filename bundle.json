@@ -1204,7 +1204,7 @@
       "runner": {
         "tool": "comfy.minimax_h3_r2v",
         "config": {
-          "_comment": "One H3 call per SECTION. shotPlanInput lets the runner sum the section's shot durations into the clip length when the authored prompt does not state one; statePlanInput/stateImagesInput give the same per-state plate substitution comfy.ltx_msr does, merged across the section's shots (last state wins) because one render can only hold one plate per character. maxRefs is 9, H3's real limit, against MSR's 5. scheduler 'beta' over the stock template's 'simple' is Comfy's own recommendation for reference-heavy prompts. 1344x768 is H3's native geometry (768 short edge, capped 768x1344, /32).",
+          "_comment": "One H3 call per SECTION. shotPlanInput lets the runner sum the section's shot durations into the clip length when the authored prompt does not state one; statePlanInput/stateImagesInput give the same per-state plate substitution comfy.ltx_msr does, merged across the section's shots (last state wins) because one render can only hold one plate per character. maxRefs is 9, H3's real limit, against MSR's 5. scheduler 'beta' over the stock template's 'simple' is Comfy's own recommendation for reference-heavy prompts. 1344x768 is H3's native geometry (768 short edge, capped 768x1344, /32). SHEET SPLIT (sheetPanels 4): character_anchor_image and character_state_image are 4-panel multi-view identity SHEETS (1536x864, four 384x864 panels: front full-body, profile, three-quarter, medium close-up) built for LTX MSR. H3 reads a reference as a literal photograph, so handed the sheet it RENDERS IT INTO THE FRAME as several people against a backdrop -- measured in dhee-cofounder/artifacts/h3-r2v-probe cell A, where the bottom ~40% of every frame is a reproduction of the sheet. So the runner crops each sheet and sends panels [0, 3] -- the full-body view and the close-up -- as SEPARATE references, which is what H3's 9 slots exist for. viewsPerCharacter walks down to 1 automatically when a crowded scene would overflow. Do NOT set sheetPanels to 0 here without changing the anchor stage to emit single views.",
           "outputPath": "assets/videos/scenes/{{item_id}}.mp4",
           "workflowPath": "workflows/minimax_h3_r2v.json",
           "endpoint": "self.local",
@@ -1235,7 +1235,16 @@
           "samplerName": "res_multistep",
           "scheduler": "beta",
           "seed": 42,
-          "timeoutMinutes": 45
+          "timeoutMinutes": 45,
+          "sheetPanels": 4,
+          "sheetTypes": [
+            "character"
+          ],
+          "sheetPick": [
+            0,
+            3
+          ],
+          "viewsPerCharacter": 2
         }
       },
       "displayCapability": "shot.video"
