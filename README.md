@@ -123,6 +123,44 @@ ln -sfn ~/.kshana/runners/dhee-runner-minimax-h3 \
 `comfy.minimax_h3_r2v` reference precedence: per-item `referenceInputs` routing
 (this bundle) → static `refImages`.
 
+## Why this bundle exists rather than illustrated_story_msr
+
+Head-to-head on the same shot, same box, matched geometry and duration
+(`dhee-cofounder/artifacts/h3-r2v-probe/ltx_compare.mjs`):
+
+| | LTX-2.3 MSR | MiniMax H3 |
+|---|---|---|
+| geometry / frames | 1280×736, 121 (5.04s) | 1280×720, 124 (5.17s) |
+| steps | **8** (DMD distilled) | **20** |
+| per step | 2.31 s/it | ~6.6 s/it |
+| **total** | **74s** | **154s** |
+
+H3 costs ~2.1× per call — and the founder's verdict on the two clips was that
+H3 is **much better on every axis that was compared: identity/face, motion and
+physics, detail and texture, and audio.** That is the whole justification for
+this bundle: LTX MSR is not a quality fallback, it is a cheaper and visibly
+worse render.
+
+Two things follow, and they matter when tuning:
+
+1. **Do not trade resolution away to save time.** Detail and texture is one of
+   the axes H3 wins on; dropping to 480p spends exactly what is being paid for.
+   Hence the 1344×768 default.
+2. **The per-CALL comparison flatters LTX.** LTX renders one continuous take, so
+   a three-cut scene is three calls (~222s) plus three hard seams between
+   independent generations. H3 renders all three cuts in ONE call, internally
+   consistent. Per finished scene the gap narrows sharply and may invert — the
+   15s/362-frame measurement that would settle it has not been taken yet (cell
+   B was interrupted).
+
+Most of H3's per-call disadvantage is step COUNT, not the model: LTX's chain
+carries a DMD distillation LoRA and runs an 8-step `ManualSigmas` schedule
+while H3 ref2va is undistilled at 20 steps. If an H3 step-distillation LoRA
+appears, that gap largely closes. SageAttention is already globally enabled on
+the box, so it is not an untapped lever; `EasyCache`/`LazyCache` and step count
+are. Both carry risk on identity, which is one of the axes H3 is winning —
+measure against a known-good clip rather than assuming.
+
 ## Known limitations / open items
 
 1. **Over-long sections are clamped.** A section whose planned shots sum past
