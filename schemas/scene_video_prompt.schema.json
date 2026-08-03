@@ -15,8 +15,7 @@
     "videoPrompt": {
       "type": "string",
       "minLength": 400,
-      "maxLength": 6000,
-      "description": "The COMPLETE, standalone prompt for ONE MiniMax H3 generation, ready to render with no further enhancement. This is NOT one shot — it is a WHOLE SCENE of 5 to 15 seconds containing SEVERAL CUTS, and it must be written as a directed sequence, in this order: (a) one opening line naming the art style, the aspect and the overall look; (b) a TIMECODED SHOT LIST, one block per cut, written literally as '[0-3 seconds] ... [3-7 seconds] ...' covering the whole duration with no gaps and no overlap; each block states shot size, camera height/angle, camera MOVE, what is in frame, and the ACTION AS MOTION (a beginning state and an end state, never a frozen tableau); (c) the TRANSITIONS between cuts written as physical EVENTS, not named effects ('a hard cut on the impact', 'a whip pan that smears the frame') -- H3 responds to described transitions and ignores labelled ones; (d) an AUDIO paragraph -- this model generates synced stereo sound natively, so name the ambient bed, the foley paired to each physical beat, any music, and any dialogue as a SHORT quoted line with a delivery cue; (e) a final DO-NOT paragraph. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number anywhere in this text: the renderer prepends its own '<Picture N>' reference-binding clause built from your `references` array, and a second, contradictory numbering is the fastest way to break identity. Instead, re-describe every visible character/object/location BY APPEARANCE so the prose and the plates agree. Flowing cinematic prose inside each timecode block, not a tag list."
+      "description": "The COMPLETE, standalone prompt for ONE MiniMax H3 generation, ready to render with no further enhancement. This is NOT one shot — it is a WHOLE SCENE of 5 to 15 seconds containing SEVERAL CUTS, and it must be written as a directed sequence, in this order: (a) one opening line naming the art style, the aspect and the overall look; (b) a TIMECODED SHOT LIST, one block per cut, written literally as '[0-3 seconds] ... [3-7 seconds] ...' covering the whole duration with no gaps and no overlap; each block states shot size, camera height/angle, camera MOVE, what is in frame, and the ACTION AS MOTION (a beginning state and an end state, never a frozen tableau); (c) the TRANSITIONS between cuts written as physical EVENTS, not named effects ('a hard cut on the impact', 'a whip pan that smears the frame') -- H3 responds to described transitions and ignores labelled ones; (d) an AUDIO paragraph -- this model generates synced stereo sound natively, so name the ambient bed, the foley paired to each physical beat, any music, and any dialogue as a SHORT quoted line with a delivery cue; (e) a final DO-NOT paragraph. NEVER write 'Image 1', 'Picture 2', 'reference 3' or any slot number anywhere in this text: the renderer prepends its own '<Picture N>' reference-binding clause built from your `references` array, and a second, contradictory numbering is the fastest way to break identity. Instead, re-describe every visible character/object/location BY APPEARANCE so the prose and the plates agree. Flowing cinematic prose inside each timecode block, not a tag list. HARD LIMIT: keep this under ~6000 characters. It is NOT enforced by this schema on purpose -- a maxLength here makes llama.cpp's JSON-schema-to-GBNF converter emit a grammar with thousands of character repetitions, which it then fails to parse ('Failed to initialize samplers: failed to parse grammar'), so every structured call 400s. The renderer enforces the real ceiling instead: comfy.minimax_h3_r2v trims the composed prompt to H3's ~7000-char window, prose-first, so the reference-binding clause always survives."
     },
     "cuts": {
       "type": "array",
@@ -25,13 +24,32 @@
       "description": "The same cut list as structured data -- for the operator's reading and for QA that the timecodes actually tile the duration. It MUST match the '[a-b seconds]' blocks inside videoPrompt exactly. Two to four cuts is the working range for a 15-second scene; one cut is legitimate for a single sustained beat, and more than four inside 15 seconds reads as a montage rather than a scene.",
       "items": {
         "type": "object",
-        "required": ["start", "end", "description"],
+        "required": [
+          "start",
+          "end",
+          "description"
+        ],
         "additionalProperties": false,
         "properties": {
-          "start": { "type": "number", "minimum": 0, "description": "Seconds from the start of the clip when this cut begins. The first cut MUST start at 0." },
-          "end": { "type": "number", "minimum": 0, "description": "Seconds when this cut ends. MUST equal the next cut's `start`, and the last cut's `end` MUST equal `duration`." },
-          "description": { "type": "string", "minLength": 20, "description": "What this cut shows -- framing, camera move, and the action as motion. One or two sentences." },
-          "transitionOut": { "type": "string", "description": "How this cut hands off to the next, described as a physical event ('cut hard on the door slam', 'whip pan smears left into'). Omit on the final cut." }
+          "start": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Seconds from the start of the clip when this cut begins. The first cut MUST start at 0."
+          },
+          "end": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Seconds when this cut ends. MUST equal the next cut's `start`, and the last cut's `end` MUST equal `duration`."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 20,
+            "description": "What this cut shows -- framing, camera move, and the action as motion. One or two sentences."
+          },
+          "transitionOut": {
+            "type": "string",
+            "description": "How this cut hands off to the next, described as a physical event ('cut hard on the door slam', 'whip pan smears left into'). Omit on the final cut."
+          }
         }
       }
     },
@@ -42,7 +60,12 @@
       "description": "The reference plates H3 holds identity from for THIS whole scene. ORDER IS LOAD-BEARING: subjects first, most important first, and the single `location` reference LAST. HARD CAP 9 (H3's real limit, nearly double LTX MSR's 5) -- but fewer is still better, because every extra plate dilutes the others; cite only what is actually visible somewhere in this scene. Never empty. Appearance STATES are substituted automatically: when a character's ledger state has changed by this scene, the renderer swaps in that state's EDITED plate -- always cite the plain character id, never invent a state id. Because the whole scene renders in ONE pass, a character can only be held from ONE plate here: if their appearance changes mid-scene, cite the state they END in and carry the change itself in the prose.",
       "items": {
         "type": "object",
-        "required": ["id", "type", "appearsAs", "job"],
+        "required": [
+          "id",
+          "type",
+          "appearsAs",
+          "job"
+        ],
         "additionalProperties": false,
         "properties": {
           "id": {
@@ -51,7 +74,11 @@
           },
           "type": {
             "type": "string",
-            "enum": ["character", "object", "location"],
+            "enum": [
+              "character",
+              "object",
+              "location"
+            ],
             "description": "'character' resolves against the per-character anchor plates (auto-substituted with this scene's appearance-state plate when one exists). 'object' resolves against the per-object anchor plates -- use it only when the scene's action is physically ABOUT that object (held, caught, carried, handed off, dropped). 'location' resolves against the per-location plates and is moved LAST; include exactly one per scene."
           },
           "appearsAs": {
