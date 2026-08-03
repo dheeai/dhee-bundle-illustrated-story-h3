@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
@@ -716,10 +716,6 @@
           "scope": "matching"
         },
         {
-          "from": "director_screenplay",
-          "usage": "context"
-        },
-        {
           "from": "story_bible",
           "usage": "context"
         },
@@ -739,7 +735,7 @@
       "runner": {
         "tool": "llm.generate",
         "config": {
-          "_comment": "v0.11.0: prompts/scene_detail.md gained a SCOPE FENCE — every beat named in another section's brief belongs to that section and must not be staged here; no lead-in shots for the previous section, no anticipatory shots for the next. This fixes duplicate shots in the finished film (issue #3): a section would dramatise a LATER section's beat, that later section would then stage it properly too, and the film played the same action twice in a row with the same staging and dialogue. Measured in the-meeting (97 sections): scene_28's brief covered only a bicycle arrival, yet its shots staged scene_29's bottles beat AND scene_52's oil-pour beat, and the oil pour appeared a third time. Duplication scales with section count — 6 of 10 corpus-wide duplicate pairs were in the longest film; the short films had none. NOTE the input shape is deliberately unchanged: scene_outline's scope:'matching' is a NO-OP here, because scene_outline is a STAGE with one instance and walker.ts falls back to 'pick first' — so this node ALREADY receives every section, which is both why the leak was possible and why the fix is prompt-only. Do NOT try to add a second scene_outline input to expose the neighbours: resolvedInputs is keyed by inp.from, so two inputs from the same node collide and one silently clobbers the other. Validated by A/B on identical input (the-meeting/scene_28, thinkingcap-27b, temp 0.2): pre-fence 2 shots with the stolen beats present, post-fence 1 shot with only its own; and scene_29 still stages its own bottles beat, so the fence does not cause under-staging.",
+          "_comment": "v0.5.0 — director_screenplay REMOVED from this node's inputs. Root cause of duplicated scenes/dialogue in long films (bundle issue: repeated beats): this pass used to receive the WHOLE whole-film screenplay as context and had to work out which lines were its own. It cannot be done reliably. Measured on hunt2 (134 sections, illustrated_story_msr, plan authored 2026-08-03 AFTER the prose scope-fence landed 2026-08-01): 13 dialogue lines duplicated across sections, including a whole 3-shot block staged in BOTH scene_13 and scene_14, whose briefs were distinct ('offers an audition' vs 'invites her to the bungalow') — so the fence was obeyed and the film still played the beat twice. The screenplay is organised into 31 named beat blocks with ZERO scene_N markers, while the outline has 134 sections whose headings ('The Bait', 'The Invitation') appear NOWHERE in it; scene_12-16 all fall inside one undivided '**The Change**' block holding both scene_13's line (screenplay line 108) and scene_14's (line 116). Nothing in the inputs assigned line 108 to one rather than the other — the duplication was UNDERDETERMINED BY CONSTRUCTION, not a discipline failure, which is why a prose fence could never fix it. Duplication tracked the sections:screenplay-blocks ratio across the corpus (4:1 -> 13 dupes, 2.4:1 -> 11, 1.2:1 -> 3, 1:1 -> 0). FIX: chapter_outline is the one node that holds a SINGLE chapter's screenplay AND decides where that chapter's section boundaries fall, so it alone knows which lines land in which beat — it now records them per section on `spokenLines` (it was already reading them to set `mode`, then discarding them). plan.chapter_merge needed NO change: chapterMerge.ts spreads `{...s}` so the field reaches scene_outline for free (both schemas gained the field; scene_outline.schema.json has additionalProperties:false and would otherwise fail the merge). scene_detail reads its dialogue from its OWN section's spokenLines, which it already locates by item_id. Also drops context from ~144KB to ~12KB per call (~92% of it was other sections' material) — ~4.8M -> ~450K tokens on a 134-section film. director_screenplay the NODE stays: scenes_plan still needs it for plan.assemble_keyframes' dialogue recovery.",
           "promptTemplate": "prompts/scene_detail.md",
           "outputSchema": "schemas/scene_detail.schema.json",
           "tier": "heavy",

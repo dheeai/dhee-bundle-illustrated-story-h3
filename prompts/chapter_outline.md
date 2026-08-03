@@ -121,6 +121,47 @@ Every section must give:
   section, so the next pass knows whose canonical look to re-inject — list
   EVERY character physically present in the beat, including anyone the speaker
   talks to.
+- `spokenLines`: every line spoken in THIS beat, copied VERBATIM from the
+  screenplay above — same words, same punctuation, same language, one array
+  entry per utterance, in spoken order. `[]` for a `narration` section.
+
+## `spokenLines` — you are the only pass that can do this, so do it carefully
+
+You are already reading the screenplay to set `mode`. Record the line itself
+while you have it.
+
+**You hold THIS chapter's screenplay AND you are deciding where this chapter's
+section boundaries fall — so you alone know which lines land in which beat.** No
+later pass can recover that. The next pass (`scene_detail`) is deliberately NOT
+given the screenplay at all: it authors each section's shots from that section's
+own outline entry, and takes its dialogue from your `spokenLines`.
+
+Three rules, and they are the whole job:
+
+1. **Every line goes to EXACTLY ONE section.** Never put the same line in two
+   sections to smooth a transition. That is the single failure this field exists
+   to eliminate.
+2. **A `mode:"dialogue"` section must have a non-empty `spokenLines`.** If you
+   cannot find a line for it in this chapter's screenplay, the section is
+   `mode:"narration"` — classify honestly rather than leaving a spoken beat with
+   no words.
+3. **Verbatim.** Same words, same punctuation, same language as the screenplay
+   wrote them. Do not translate, tidy, shorten, or merge two utterances into one
+   entry. A line you paraphrase here is a line the finished film gets wrong,
+   because there is no other copy downstream.
+
+If a section boundary falls mid-conversation, split the conversation: each line
+goes with the beat it is actually spoken in. Do not repeat the previous
+section's closing line as a lead-in to yours.
+
+**Why this is strict.** When the next pass received the whole 73KB whole-film
+screenplay instead, it had to re-find its own lines in a document with no
+section markers, whose beat headings appear nowhere in your outline. At a
+boundary that search is genuinely ambiguous, so two adjacent sections would each
+stage the same beat and quote the same line, and the finished film played it
+twice. Measured on a 134-section film: 13 lines duplicated across sections,
+including a whole three-shot block staged in both `scene_13` and `scene_14`.
+Your `spokenLines` is what makes that impossible rather than merely discouraged.
 
 **Do NOT show a character before THIS CHAPTER's own screenplay actually
 introduces them.** If a character is only revealed later within this chapter,

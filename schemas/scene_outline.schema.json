@@ -13,6 +13,11 @@
         "required": ["id", "heading", "mode", "brief", "emotion"],
         "additionalProperties": false,
         "properties": {
+          "spokenLines": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Carried through UNCHANGED from this section's chapter_outline entry (plan.chapter_merge spreads the whole section object, so no merge logic touches this). The verbatim lines spoken in this beat; empty for a narration section. This is what scene_detail reads INSTEAD of the whole-film screenplay — see the field's description in chapter_outline.schema.json for why. NOT in `required` here on purpose: it is authored upstream, merely relayed here, so a chapter outline that predates the field (or somehow omits it) still merges rather than failing the whole film at the merge step."
+          },
           "id": {
             "type": "string",
             "pattern": "^scene_[0-9]+$",

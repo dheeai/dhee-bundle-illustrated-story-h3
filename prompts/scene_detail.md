@@ -6,16 +6,45 @@ YOUR assigned section into full prose, a scene brief, and its shots — each
 shot being one self-contained 4-10 second clip that the video model animates
 on its own.
 
-Director's screenplay — the plain-English, scene-by-scene source of creative
-truth for this film (already written; BINDING; the single source of prose —
-there is no separate raw-story input here, so treat this screenplay as the
-complete account of what happens). Use it for the actual blocking, dialogue
-wording and — crucially — any wardrobe/prop/condition state change authored
-for THIS section's beat, so your `shots` reflect it accurately:
-{{director_screenplay}}
-
 Story bible (recurring visual identities, with ids):
 {{story_bible}}
+
+## You are NOT given the screenplay. Your dialogue is in your own section.
+
+There is deliberately no screenplay in this prompt. The outline pass held each
+chapter's screenplay while it decided where that chapter's section boundaries
+fell, and it recorded the lines belonging to each beat on that section's
+**`spokenLines`** field. So:
+
+- **Your section's `spokenLines` IS your dialogue** — the complete and only set
+  of words spoken in your section. Copy each entry VERBATIM into the `dialogue`
+  of the shot where it is spoken: same words, same punctuation, same language.
+  Never translate, tidy, shorten, or invent a line.
+- **One entry per shot, in order.** A speaker change is a new shot, so if your
+  section has three entries it needs at least three shots carrying dialogue. Do
+  not merge two entries into one shot's `dialogue`.
+- **An empty `spokenLines` means nobody speaks in your section.** Emit no
+  `dialogue`/`speaker` on any shot. Do not invent speech to fill a silence.
+- **Another section's `spokenLines` is not available to you and not yours.** You
+  can see the other sections' briefs below for continuity, but their lines belong
+  to them.
+
+Everything else — blocking, wardrobe and prop state, what physically happens —
+comes from your own section's `brief` and `entities`, expanded with your own
+craft. If your beat clearly continues a physical state the previous section
+established (a door already open, a bag already carried), honour it from that
+section's `brief`; do not restage the moment that created it.
+
+**Why the screenplay was removed.** This pass used to receive the whole
+whole-film screenplay — 73KB, no section markers, and beat headings that appear
+nowhere in the outline. Finding "which lines are mine" in it was genuinely
+ambiguous at a section boundary, so two adjacent sections would each stage the
+same beat and quote the same line, and the finished film played it twice.
+Measured on a 134-section film: 13 lines duplicated across sections, including a
+whole three-shot block staged in both `scene_13` and `scene_14`. Reading your
+lines from your own section instead makes that impossible rather than merely
+discouraged — and it is why inventing or borrowing a line here is a serious
+error, not a small liberty.
 
 The film's full outline (skeleton for every section, for continuity — you are
 expanding ONLY the ONE section identified at the end of this prompt; do not
@@ -103,8 +132,8 @@ scene identified at the end of this prompt (find it in the outline's
 `mode` value forward unchanged, and do NOT include any other section.
 
 ## STAY STRICTLY INSIDE THIS SCENE'S BOUNDARY (hard rule — read twice)
-The full screenplay and outline above are context for CONTINUITY only — they
-are NOT a menu of beats to borrow from. Two limits, both hard:
+The other sections' briefs in the outline above are context for CONTINUITY only
+— they are NOT a menu of beats to borrow from. Two limits, both hard:
 
 1. **Only this scene's cast.** Every person, hand, finger, or figure depicted
    in ANY of this section's shots MUST belong to a character in THIS scene's
@@ -114,20 +143,20 @@ are NOT a menu of beats to borrow from. Two limits, both hard:
    scene's `entities`. If this scene's entities name only `sakhubai` (plus
    objects/locations), then ONLY sakhubai may appear — a "youthful manicured
    finger", a stranger's hand, or anyone else is FORBIDDEN here.
-2. **Only this scene's own action.** Each action beat in the screenplay belongs
-   to exactly ONE scene. Depict ONLY the events the screenplay stages in THIS
-   scene. Do NOT preview, pull forward, or DUPLICATE a beat the screenplay
-   places in a DIFFERENT scene. If a customer pokes and tastes the fish, or
+2. **Only this scene's own action.** Each action beat belongs to exactly ONE
+   scene. Depict ONLY the events YOUR OWN section's `brief` names. Do NOT
+   preview, pull forward, or DUPLICATE a beat another section's `brief`
+   describes. If a customer pokes and tastes the fish, or
    money changes hands, in a LATER scene, those shots belong to that later
    scene ALONE and must not appear here. Two scenes must never share the same
    action — if you have already (or will) render a beat in its own scene, it
    cannot also live here.
 
 3. **Do NOT pad the shot count with borrowed beats.** Emit only as many shots
-   as THIS scene's OWN screenplay action supports. If this scene's own beats
-   are few, emit FEW shots (as few as 1–2) — that is correct and strongly
-   preferred over reaching a higher count by importing an action the screenplay
-   stages in another scene. A quiet solo setup scene (unloading, arranging,
+   as THIS scene's OWN `brief` and `spokenLines` support. If this scene's own
+   beats are few, emit FEW shots (as few as 1–2) — that is correct and strongly
+   preferred over reaching a higher count by importing an action another
+   section's `brief` names. A quiet solo setup scene (unloading, arranging,
    sprinkling water, calling out) is COMPLETE at its own last beat; do not
    append a fish-inspection, a customer poke, a sale, or a "showing/quality
    check" that actually belongs to a later scene just to add shots.
@@ -139,8 +168,9 @@ are NOT a menu of beats to borrow from. Two limits, both hard:
    character's own hand, the beat isn't this scene's.
 
 Self-check before you emit: for every shot, ask "is this shot's subject a
-character in THIS scene's `entities`, doing an action the screenplay assigns to
-THIS scene, described consistently with that character's own body?" If not,
+character in THIS scene's `entities`, doing an action MY OWN `brief` licences,
+speaking only a line from MY OWN `spokenLines`, described consistently with that
+character's own body?" If not,
 DELETE that shot (do not replace it just to keep the count) — for a solo setup
 scene, the seller alone laying out, arranging, sprinkling, calling out IS the
 whole scene; a customer interaction or fish-quality inspection that happens
