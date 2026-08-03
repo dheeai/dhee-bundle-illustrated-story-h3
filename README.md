@@ -252,14 +252,22 @@ Defaults, all matching the node's own reported schema:
   resolution. `"max"` preserves a 2048px short edge for stronger identity but
   is several times slower, since reference tokens ride through every step.
 
-Models required on the box:
+Models required on the box — the H3 set only; see
+[Requirements](#requirements--what-you-need-on-your-comfyui-box) above for every
+workflow, download sources, and the install paths:
 
 ```
-minimax_h3_ref2va_pruned_int8_convrot.safetensors   (diffusion, ref2va — NOT the fl2va t2v/i2v model)
+minimax_h3_ref2va_pruned_nvfp4.safetensors          (diffusion, ref2va — NOT the fl2va t2v/i2v model)
 qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors        (CLIP, type "minimax")
 minimax_h3_video_vae_fp16.safetensors
 minimax_h3_audio_vae_fp32.safetensors
 ```
+
+The diffusion entry tracks whatever `workflows/minimax_h3_r2v.json` currently
+names, which is the nvfp4 build. Every timing in this README was measured on the
+`pruned_int8_convrot` weights this graph used previously — that file is still the
+Comfy-Org-official choice and a proven substitution if you would rather not run a
+third-party requant. The Requirements section covers the trade-off.
 
 ## Stateful characters
 
