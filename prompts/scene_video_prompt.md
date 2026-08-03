@@ -250,6 +250,12 @@ array and write only that scene.
 Read your own `detailedDescription` back and confirm each one. These are the
 things that get missed most often; everything else above is context.
 
+0. **`spokenLines` first.** Before writing any prose, find every shot in your
+   section with a `dialogue` value and copy each line into `spokenLines`
+   verbatim — same words, same punctuation, same language. Then, when you write
+   `detailedDescription`, **copy each line out of `spokenLines`** rather than
+   retyping it from the plan. You already got it right once; do not do the hard
+   part twice.
 1. **Find every `<d>` you wrote. Look at the words immediately before it. If
    there is no `(S1)` / `(S2)` there, ADD ONE NOW.** A spoken line with no
    speaker id is a line with nobody saying it — H3 has the words and no voice to

@@ -3,6 +3,7 @@
   "type": "object",
   "additionalProperties": true,
   "required": [
+    "spokenLines",
     "summary",
     "detailedDescription",
     "overallSoundscape",
@@ -13,6 +14,13 @@
     "purpose"
   ],
   "properties": {
+    "spokenLines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "FIRST FIELD ON PURPOSE. Every line spoken in this scene, copied VERBATIM from the scene plan's shots -- same words, same punctuation, same language, one array entry per line. Empty array only if nobody speaks.\nWhy it comes first: constrained decoding emits properties in schema order, so writing the lines HERE forces the exact transcription to happen once, in isolation, before any prose exists to compete for attention. Then detailedDescription only has to COPY what you already wrote a few tokens ago rather than re-find a long transliterated line inside the scene plan and retype it from memory.\nMeasured motivation: on g4-meromero every compliance failure was on a dialogue scene and the rate degraded with line length (49-char line 5/8 runs clean, 98-char line 3/7) -- the failing step is transcription, not the format rules. Reproduce each entry inside a <d>[Language] ... </d> tag in detailedDescription, with an (Sx) speaker id in front of it."
+    },
     "summary": {
       "type": "string",
       "minLength": 60,
