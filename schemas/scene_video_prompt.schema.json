@@ -102,8 +102,8 @@
     "duration": {
       "type": "number",
       "minimum": 5,
-      "maximum": 15,
-      "description": "Seconds this scene runs, 5 to 15. H3 renders 5-15s per call and this whole scene is ONE call, so this is the hard budget every cut has to fit inside -- the renderer clamps anything outside it and snaps the result to H3's 17k+5 frame grid at 24fps, so small deviations are normal. Aim at the section's own budget; if the section's beats genuinely cannot fit in 15 seconds, cut the least essential beat rather than overrunning."
+      "maximum": 8,
+      "description": "Seconds this scene runs, 5 to 8. This whole scene is ONE H3 call and the runner's maxSeconds is 8, so 8 is the hard ceiling every cut must fit inside -- NOT 15. H3 snaps length to a 17k+5 frame grid at 24fps, so 5.17s and 8.00s are the two grid points in range and small deviations are normal. If the section's beats genuinely cannot fit in 8 seconds, cut the least essential beat rather than overrunning. Why 8: a measured duration sweep found H3's marginal cost jumps ~3.5x between 8.00s (192 frames) and 9.42s (226 frames), and 8.00s is also cheaper in absolute wall-clock than 7.29s, so 8 is the last length before cost stops being linear. This maximum previously read 15 while the runner clamped at 8 and chapter_outline paced sections at durationSec/15 -- three numbers that should be one. The mismatch cost a retry on roughly one prompt in eight and killed a 35-section run outright when scene_27 failed '/duration must be <= 15' three times."
     },
     "purpose": {
       "type": "string",

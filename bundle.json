@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.5.0",
+  "version": "0.5.5",
   "license": "MIT",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
@@ -742,7 +742,8 @@
           "outputFormat": "json",
           "maxTokens": 6000,
           "concurrency": 4,
-          "structuredMode": "schema"
+          "structuredMode": "schema",
+          "_comment_spokenlines_one_shot": "v0.5.2 fixes a bug INTRODUCED by v0.5.0's own prompt. The spokenLines instruction read 'One entry per shot, in order', which the model read as 'every shot gets an entry'. With ONE line and TWO shots it put the SAME line on both, so the finished film would speak it twice in a row -- trading the old cross-SECTION duplication for a new within-SECTION one. Measured on unseeing_role (35 sections): 6 repeated dialogue values, and 5 of the 6 were a single line duplicated across two shots of the SAME section (scene_13/23/28/5/2), caught at the plan checkpoint before any clip rendered. The prompt now states that each entry appears in EXACTLY ONE shot, that shots outnumbering lines are WORDLESS (no dialogue, no speaker), and that shot count and line count are independent -- extra shots are not slots to fill. A terminal check asks the model to list its own dialogue values and delete any line appearing twice. Note what the same run proved about v0.5.0 itself: of 21 lines across 35 sections and 2 chapters, only two were assigned to more than one section -- 'Ira Kulkarni.' (13 chars) and 'Thank you.' (10 chars), both genuinely repeated in the source story -- while every substantive line (255, 78, 64, 45, 27 chars) had exactly one owner. hunt2 pre-fix had 13 duplicated lines including 90+ char speeches. Cross-section leakage is fixed; this was a separate, self-inflicted regression on top of it."
         }
       },
       "displayCapability": "scene.detail"
@@ -1207,9 +1208,12 @@
           "outputSchema": "schemas/scene_video_prompt.schema.json",
           "tier": "heavy",
           "outputFormat": "json",
-          "concurrency": 2,
+          "concurrency": 5,
           "structuredMode": "schema",
-          "maxTokens": 6000
+          "maxTokens": 6000,
+          "_comment_own_shots_only": "v0.5.3: this node leaks NEIGHBOURS' DIALOGUE, a separate instance of the duplication bug from the scene_detail one fixed in v0.5.0. It receives the WHOLE scenes_plan (every section's shots) and must take only the shots prefixed with its own section id. Measured on unseeing_role (35 sections, qwen-35b): 13 lines appeared in the RENDERED detailedDescription prose of more than one scene -- a 78-char line staged in FOUR scenes (9/19/20/21), a 45-char line in two -- so the finished film would have spoken them repeatedly. Caught before any clip rendered. Crucially this is NOT the underdetermined case scene_detail had: every shot in the plan is explicitly tagged with its owning section (scene_20_shot_1), so the correct answer is unambiguous and the model was simply not filtering. The prompt now states the `<section id>_shot_` prefix as the exact and only test, names the measured 4-scene failure, and adds terminal check 0b: list every <d> and delete any line that is not in your own shots. Also fixes spokenLines being authored WITH the markup ('<d>[English] Thank you.</d>' instead of 'Thank you.'). Model note: scene authoring moved from g4-meromero-192k to qwen-35b for this run because g4 collapsed into a repetition loop on two sections -- it appended a subject_definitions block (which the RUNNER writes) and ran 'and <Subject 4> and <Subject 5>...' out to <Subject 695> until maxTokens 6000 truncated it mid-string, failing all 3 attempts and killing the run. scene_video_prompt.md now caps subject numbers at the reference count and forbids appending definitions.",
+          "_comment_concurrency": "concurrency 2 -> 5 (v0.5.4), from a measured breakdown of the 34s-per-scene authoring cost on qwen-35b. The box is NOT slow: free generation measured 200-300 tok/s warm and prefill of the 15,219-token scenes_plan ran at ~5,073 tok/s (3s). Thinking is already disabled by dhee-core (LLMClient.ts sends chat_template_kwargs.enable_thinking=false). So of 34s per scene, ~3s is prefill and free-decoding ~1,400 output tokens would be ~6s -- the remaining ~25s is GBNF grammar-constrained decoding, an effective ~47 tok/s against 250 free, i.e. a ~5x penalty. llama.cpp evaluates the grammar stack per token on the CPU, so the GPU sits largely idle through it and extra concurrent slots are close to free. Two things drive the token count and therefore the penalty: detailedDescription.minLength 1940 (forces ~500 words, deliberately, per the MiniMax H3 guide's 350-500 range) and the nested references/enum schema. Lowering minLength would cut wall-clock proportionally but costs prompt quality, so raise parallelism first. Cautionary note on measuring this: a first attempt reported 3.6 tok/s and blamed VRAM contention -- it was rotating FOUR different models in one loop, so every call paid a ~27s cold model load (qwen-35b measured). Always warm the model and hold it fixed before timing anything on this gateway.",
+          "_comment_duration_one_number": "v0.5.5 collapses THREE independent duration numbers into one. They were: scene_video_prompt.schema.json duration maximum 15, the scene_clip runner's maxSeconds 8, and chapter_outline's `sections = durationSec/15` pacing divisor. That mismatch cost a schema-validation retry on roughly one prompt in eight and then KILLED a 35-section run when scene_27 failed '/duration must be <= 15' three times. The schema maximum is now 8 and both the prompt header ('up to 8 seconds here') and step 4 ('clamped to 5-8 seconds - 8 is the hard ceiling, not 15') agree with it. After the change scene_27 authored on the first attempt. The pacing divisor is still 15 and still disagrees -- see issue #2; sections therefore get budgeted ~11s and each scene prompt clamps down to 8, dropping its least essential beat by design rather than by accident."
         }
       },
       "displayCapability": "shot.video_prompt",
@@ -1289,7 +1293,7 @@
           "shotPlanInput": "scenes_plan",
           "seconds": 12,
           "minSeconds": 5,
-          "maxSeconds": 15,
+          "maxSeconds": 8,
           "fps": 24,
           "resolutionInput": "resolution",
           "width": 1344,
@@ -1312,7 +1316,8 @@
           "easyCache": true,
           "easyCacheThreshold": 0.3,
           "easyCacheStart": 0.2,
-          "easyCacheEnd": 0.9
+          "easyCacheEnd": 0.9,
+          "_comment_duration_cap": "maxSeconds 15 -> 8 (v0.5.1), from a measured duration sweep at 1280x720, 20 steps, 2 refs on the production graph (artifacts/h3-r2v-probe/duration_sweep.mjs). H3 snaps length to a 17k+5 frame grid, so only five lengths exist between 5s and 8s: 124/141/158/175/192 frames. Measured wall-clock: 124f=128s, 141f=210s, 158f=250s, 175f=292s, 192f=288s, 226f=573s. Marginal cost is ~41s per +17 frames from 141f through 192f and then jumps to ~142s per step at 226f -- a 3.5x cliff between 8.00s and 9.42s. 8.00s (192f) is therefore the last length before cost stops being linear, and it is also CHEAPER in absolute wall-clock than 175f/7.29s (288s vs 292s), so 141f/158f/175f are all strictly dominated: they cost more per second of finished video than 192f while delivering less of it. Cheapest per second of output is 124f/5.17s at 24.8s of compute per second of video, vs 36.0 for 192f -- but that rests on a single 128s measurement whose repeat-control never ran, so treat the size of that advantage as unconfirmed. Both cheap points (124, 192) are the only sweep lengths divisible by 4, consistent with a temporal-VAE stride-4 alignment effect -- a HYPOTHESIS from two points, not a result. Ideally the runner would snap only to 124f or 192f rather than any grid point <=8s; capping is the cheap approximation of that."
         }
       },
       "displayCapability": "shot.video"

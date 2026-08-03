@@ -20,9 +20,18 @@ fell, and it recorded the lines belonging to each beat on that section's
   of words spoken in your section. Copy each entry VERBATIM into the `dialogue`
   of the shot where it is spoken: same words, same punctuation, same language.
   Never translate, tidy, shorten, or invent a line.
-- **One entry per shot, in order.** A speaker change is a new shot, so if your
-  section has three entries it needs at least three shots carrying dialogue. Do
-  not merge two entries into one shot's `dialogue`.
+- **Each entry appears in EXACTLY ONE shot. Never put the same line on two
+  shots.** A line spoken twice is a line the audience hears twice in a row, and
+  it reads instantly as a bug. If you have ONE line and TWO shots, the line goes
+  on ONE of them and **the other shot carries no `dialogue` and no `speaker` at
+  all** — it is a reaction, an action, a held look, whatever the beat needs
+  visually. Silence in a shot is normal and correct.
+- **Never repeat a line to fill a shot.** The number of shots and the number of
+  lines are independent: shots come from `targetShotCount`, lines come from
+  `spokenLines`. Extra shots are wordless; they are not slots that must be filled.
+- **Lines go in spoken order**, one per shot, across the shots that do speak. A
+  speaker change is a new shot, so two entries by different speakers need two
+  shots. Do not merge two entries into one shot's `dialogue`.
 - **An empty `spokenLines` means nobody speaks in your section.** Emit no
   `dialogue`/`speaker` on any shot. Do not invent speech to fill a silence.
 - **Another section's `spokenLines` is not available to you and not yours.** You
@@ -175,6 +184,14 @@ DELETE that shot (do not replace it just to keep the count) — for a solo setup
 scene, the seller alone laying out, arranging, sprinkling, calling out IS the
 whole scene; a customer interaction or fish-quality inspection that happens
 later must not appear here.
+
+**Then one last check, on dialogue specifically.** List the `dialogue` values you
+just wrote across all your shots. Is any line there TWICE? If so, delete it from
+all but one shot and leave those shots wordless — do NOT swap in a different line
+to keep them speaking. This is the single most common way this pass has broken:
+a section with one `spokenLines` entry and two shots put the same line on both,
+and the finished film said it twice in a row. Shots outnumbering lines is normal;
+wordless shots are correct.
 
 ### `section`
 - `id`: copy verbatim from the outline skeleton (`scene_<N>`).
@@ -339,6 +356,24 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   beats" — `targetShotCount` is the answer; compress or combine beats to fit
   it (a 4-10 second shot comfortably holds two or three beats). The ONE
   exception is physical continuity, below.
+
+  **NEVER emit a shot shorter than 2 seconds. The schema rejects it and the
+  whole section fails.** This bites when `budgetSec` does not divide evenly into
+  the 2-10 range. If honouring `budgetSec` exactly would leave a remainder under
+  2 seconds, DO NOT emit that remainder as its own tiny shot — absorb it, or
+  drop it.
+
+  Worked example, because this is the exact case that has failed a run:
+  `budgetSec` 11.3 with `targetShotCount` 1. One shot cannot be 11.3s (the
+  maximum is 10). The WRONG answer is two shots of 10 + 1.3 — that 1.3 is below
+  the minimum and the section is rejected outright, three attempts in a row,
+  killing the run. The RIGHT answer is **a single 10-second shot**: come in
+  1.3s under budget and let it go. Being slightly under `budgetSec` is always
+  acceptable; a sub-2-second shot never is.
+
+  The rule in general: `budgetSec` is a target, the 2-10 range is a HARD limit,
+  and when they conflict the range wins. Round down to whole shots that fit and
+  accept the shortfall.
 
   In practice: if `targetShotCount` is 1, that one shot's `duration` is
   `budgetSec` itself (clamped into 4-10 if `budgetSec` falls outside that
