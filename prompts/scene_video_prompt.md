@@ -154,6 +154,61 @@ The target video is in a hand-painted illustrated style with warm gouache textur
 
 ## Dialogue
 
+### THE RULE THAT BREAKS THE AUDIO: never describe speech you do not supply
+
+**If your prose says anyone speaks, that speech MUST appear as words in a `<d>`
+tag. If you have no words, do not say anyone speaks.** There is no third option.
+
+H3 generates the audio track from this text. Tell it a woman speaks with a
+trembling voice and give it no words, and it synthesises a trembling voice saying
+nothing — **voice-shaped noise.** It sounds like a corrupted file. This is the
+single worst audio failure this pass produces, and it is silent at authoring time:
+the JSON validates, the render succeeds, and the clip is unusable.
+
+**Measured.** A shipped 35-section film had garbled audio on multiple clips. One of
+them told H3 three separate times that she spoke — "She speaks with a measured,
+trembling breath, her voice carrying the weight…", "as she delivers her lines",
+"The sound of her voice cracks slightly with emotion" — with `spokenLines: []` and
+zero `<d>` tags. Re-rendering the identical scene with the line supplied, changing
+nothing else, produced clean intelligible speech. Resolution, model, step count and
+caching were each ruled out first; the defect was entirely in this text.
+
+So, before you write any speech verb:
+
+- **Has this section a line in `spokenLines`?** Then the prose may say she speaks,
+  and the words go in a `<d>` tag at that moment.
+- **Is `spokenLines` empty?** Then **no one speaks in your scene.** Write breath,
+  movement, stillness, a held look, a swallow, a door — never "she speaks", "he
+  says", "delivers her lines", "her voice carries", "her voice cracks", "murmurs",
+  "calls out". A wordless scene is normal and correct; a described-but-wordless
+  voice is broken.
+
+**This applies to background voices too.** A crowd, photographers shouting, a name
+called across a room — if you describe them vocalising and give no words, H3
+generates babble for them. Either give them a line in a `<d>` tag, or describe the
+sound non-vocally ("the clatter of shutters", "a press of bodies", "the scrape of
+chairs").
+
+### `overallSoundscape` carries NO voices at all
+
+That section is for **non-verbal** sound only. Do not describe a speaking voice
+there, even in the abstract — "her voice carries a trembling quality" in the
+soundscape is a second instruction to synthesise speech in a layer that must not
+contain any, and it garbles the audio exactly as above. Breath, footsteps, fabric,
+impacts, ambience, laughter, a gasp: yes. Anything that is a voice conveying
+words: no. All dialogue lives in `detailedDescription` and nowhere else.
+
+### Establish the voice, outside the tag
+
+On a speaker's first appearance, give H3 the vocal identity it needs: approximate
+age, register, pace, and accent if it matters — placed OUTSIDE the `<d>` tag,
+alongside the `(Sx)` id. Without it H3 picks a voice at random and it can drift
+between scenes.
+
+```
+<Subject 1> (S1) — an Indian woman in her late thirties, warm mid-range voice, unhurried, faint Mumbai inflection — looks up and says quietly: <d>[English] I'm sorry. Could you say that again?</d>
+```
+
 **Every spoken line needs TWO things, and a `<d>` tag alone is incomplete:**
 
 1. a **speaker id** — `(S1)`, `(S2)`, or `(S1,S2)` when they speak together —
@@ -329,6 +384,14 @@ things that get missed most often; everything else above is context.
    `</d>`. The markup is added when you place the line in
    `detailedDescription`. An entry like `<d>[English] Thank you.</d>` is wrong;
    the entry is `Thank you.`
+
+0a. **Find every speech verb in your prose — "speaks", "says", "delivers her
+   lines", "her voice", "calls", "murmurs", "shouts" — and confirm each one has a
+   `<d>` tag with actual words attached.** If any describes speech with no words,
+   either supply the line from `spokenLines` or DELETE the description and write a
+   physical action instead. Then check `overallSoundscape` contains no voice at
+   all. Describing a voice with nothing to say makes H3 generate voice-shaped
+   noise, and the clip is unusable — this has shipped broken films.
 
 0b. **Now check every `<d>` against your own shots.** List the words inside each
    `<d>…</d>` you wrote. Every single one must match a `dialogue` value from a
