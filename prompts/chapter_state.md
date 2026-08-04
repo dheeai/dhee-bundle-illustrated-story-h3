@@ -1,131 +1,86 @@
-You are building THIS CHAPTER's contribution to the CHARACTER APPEARANCE STATE
-LEDGER for an animated film — a single pass over ONLY this chapter's own shots
-that folds wardrobe/prop/condition changes forward from wherever the previous
-chapter left off, so every later shot (in this chapter, and every chapter
-after it) knows exactly what each character currently looks like.
+You are the APPEARANCE-TIMELINE pass for ONE CHAPTER of a film.
 
-This chapter is `{{item_id}}`. Find it in the chapter list below for its own
-title/summary/word range:
-{{chapters}}
+Your job: for each recurring character (and any location whose look genuinely
+changes), say **what they look like, and from which scene onward.** Nothing else.
 
-Story bible — the BASELINE canonical look of every character, before any story
-event changes it. Chapter 1's characters start here; every later chapter's
-characters start from where the PREVIOUS chapter's own ledger left them
-instead (see the fold-forward section below):
-{{story_bible}}
+## What you are given
 
-THIS chapter's own screenplay — the source of truth for WHEN each state change
-happens in THIS chapter (read its "Continuity Notes" and "Scene By Scene"
-sections for the exact moment a character sheds a jacket, picks something up,
-gets soaked, etc.):
+This chapter's screenplay — the source of creative truth for what actually
+happens here, including every change of clothes, every injury, every day turning
+to night:
+
 {{chapter_screenplay}}
 
-THIS chapter's own shots — find every shot in the flat `shots` array below;
-process ALL of them, and ONLY them, IN ORDER (by `scene`, then `shotNumber`).
-Use each shot's `characterPresence`/`description`/`dialogue`/`speaker` to know
-which characters are actually in frame:
-{{chapter_shots}}
+This chapter's section outline — the `scene_<N>` ids you must anchor your
+transitions to. **Every `from` you write must be one of these ids:**
 
-## Fold-forward — carrying the previous chapter's ledger across the boundary
+{{chapter_outline}}
 
-`{{chapter_state}}` is an array, newest-first, holding the IMMEDIATELY
-PRECEDING chapter's own ledger output (its `content` field is that chapter's
-full ledger JSON — the SAME shape you are producing now). It is EMPTY for
-chapter 1 — there is nothing to fold forward yet, so chapter 1's characters
-start from their `story_bible` baseline instead.
+Story bible (the canonical ids — `characters`, `locations`, `objects`):
 
-**Appearance folds FORWARD across the chapter boundary, never resets.** Every
-character enters THIS chapter in whatever state they ended the previous
-chapter in — the previous chapter's ledger's LAST entry for that character (by
-shot order) IS their starting point here, not the story-bible baseline (that
-baseline applies to chapter 1 only, or to a character's very first appearance
-anywhere in the film). Carry that state in unchanged and only change what THIS
-chapter's own screenplay/shots actually change — do not invent drift, and do
-not revert a change from an earlier chapter unless THIS chapter's material
-explicitly reverses it.
+{{story_bible}}
 
-A time-skip between chapters is exactly the kind of transition this fold must
-survive. For calibration: a character who slept twenty years between chapters
-wakes with a foot-long gray beard, ragged clothes, and a rust-encrusted prop
-that were fine at the end of the previous chapter's ledger — that new state
-must persist, unchanged, into every subsequent chapter's ledger until the
-story changes it again. A signature like `rip__bearded_rusty_gun` must be
-reused VERBATIM by every later chapter once it appears — never reinvented,
-never quietly dropped back to the pre-sleep look.
+Chapter metadata:
 
-## The fold — walk THIS CHAPTER's shots in order, once
+{{chapters}}
 
-For each shot, in THIS chapter's own order:
+The PREVIOUS chapters' timelines, for continuity across the boundary:
 
-1. **Starting point**: this character's state as of the immediately PRECEDING
-   shot they appeared in — either earlier in THIS chapter, or (if this is
-   their first appearance in this chapter) the state they ended the PREVIOUS
-   chapter in per `{{chapter_state}}`, or (chapter 1 only, or a character's
-   very first appearance anywhere in the film) their `story_bible` baseline.
-2. **Carry forward unchanged**: every wardrobe/prop/condition fact from the
-   starting point stays exactly as it was UNLESS THIS chapter's screenplay
-   names a change that lands at or before this shot and has not since been
-   reversed/replaced. Default to "nothing changed" — do not invent drift the
-   screenplay didn't author.
-3. **Apply a change** the first shot where it becomes visually true (per the
-   screenplay's scene placement), and then keep it applied to every later shot
-   of that character — in this chapter, and carried into every later chapter's
-   fold — until the screenplay authors a further change. A change that
-   happened earlier, whether in this chapter or a previous one, is now simply
-   part of their current look — restate it in full, don't treat it as news.
-4. **Only include characters actually present** in this shot (per its
-   `characterPresence`/`description` — a `"none"` shot or one this character
-   doesn't appear in gets an empty or shorter `characters` array; never
-   fabricate a presence to give them an entry). **A `"none"`-presence shot is
-   NOT an excuse to omit the shot's ENTRY from `shots` — the shot still needs
-   an entry in the output array, it is just `{ "shotId": "...", "characters":
-   [] }`.** "Nothing to report for this character" means an empty array, not
-   a missing entry — the two are not the same thing, and a missing entry
-   breaks the schema and every downstream consumer of this ledger.
-5. Do **NOT** track position, blocking, camera, or where someone is standing —
-   appearance only (wardrobe, held/carried props, physical condition: dirt,
-   wet, wounds, hair). Position is a different concern, not this ledger's job.
+{{chapter_state}}
 
-## Output, per shot
+---
 
-For each shot, for each present character, give:
-- `appearance`: the FULL current description, standalone — wardrobe with
-  colours, every prop currently held/carried, and condition (dirt/wet/wounds/
-  hair-state) — written as if this were the only sentence describing them, not
-  a diff against a prior shot OR a prior chapter. Someone reading only this
-  field must be able to picture them exactly, with no need to consult any
-  earlier shot or chapter.
+# You declare CHANGES, not shots
 
-  **A wearable prop must have exactly ONE unambiguous state per shot.** Name
-  the specific place it currently is, explicitly — e.g. "reading glasses
-  pushed up on her forehead" OR "reading glasses hanging from a cord around
-  her neck" — never both, and never a vague phrase ("her glasses") that could
-  be read either way. A prop the ledger leaves ambiguous about WHERE it
-  currently is is the failure mode: a real observed failure had a character's
-  glasses rendered both on her face AND hanging around her neck in the same
-  frame, because the ledger's wording didn't pin down which. Pick the ONE
-  state the screenplay actually supports at this shot and state it plainly;
-  carry that exact state forward (per the fold rules above) until the
-  screenplay authors a change to it.
+This is the part people get wrong, so read it twice.
 
-  **A held/carried story-critical object must restate its story-bible
-  description VERBATIM, not reinvent it.** Copy the object's fixed
-  form/material/colour/size/mounting/lighting straight from the story
-  bible's `objects` entry into this shot's `appearance` (e.g. "carrying the
-  cream-cylinder paper lantern with its metal ring top and X-cross frame,
-  glowing warm from within") rather than re-describing it from memory each
-  shot. Treat a story-critical object's identity with the same rigor as a
-  character's face: the edit model re-synthesizes pixels every shot, so any
-  detail this ledger leaves for a shot to reinvent WILL drift.
-- `signature`: a short, stable lowercase key for this exact state. **The SAME
-  visual state MUST produce the SAME signature across every chapter** — a
-  deterministic dedupe pass downstream keys on this field to decide whether a
-  new identity-edit plate is needed; a drifted signature (the same look
-  written under two different keys) silently generates a redundant,
-  unnecessary plate. Reuse it VERBATIM across shots AND across chapters while
-  the state is unchanged; only change it when the appearance changes in a way
-  that clears the MATERIALITY BAR below — **`appearance` itself never gates on
-  this bar and stays full-fidelity regardless; only `signature` does.**
+You are **not** listing every shot. You are **not** listing every scene. You are
+listing the handful of moments where a character's appearance **materially
+changes**, and the scene each change starts from.
+
+A state you declare **holds from its `from` scene until your next state's `from`
+scene.** The renderer then assigns that state to every shot in between,
+automatically. So:
+
+- A character who looks the same for the whole chapter gets **exactly ONE state**.
+- A character who changes clothes once gets **TWO states**.
+- A chapter with 40 scenes and no wardrobe change is still **ONE state** per
+  character.
+
+**Never restate an unchanged appearance.** If you find yourself writing the same
+`signature` twice for one character, delete the second entry — it says nothing.
+
+> **Why this shape:** an earlier version of this pass asked for one row per shot,
+> restating every present character's full appearance every time. On a long film
+> that is several hundred near-identical rows, and missing a single one silently
+> gave that shot the wrong reference image. Declaring the transitions instead
+> means you write four rows where you used to write three hundred, and the
+> assignment becomes arithmetic the renderer does exactly, every time.
+
+## `from` — anchor every change to a real scene id
+
+`from` is a `scene_<N>` id **copied from the outline above**, and it must be a
+scene that exists in THIS chapter. Not a shot id. Not a description. Not a scene
+from another chapter.
+
+- For a character's **first** state in this chapter: the first scene here in which
+  they appear.
+- For each later state: the scene in which the change has **visibly happened**. If
+  she changes clothes during scene 12 and walks out changed in scene 13, the new
+  state's `from` is the scene where the new look is on screen. When the change
+  happens mid-scene, use the scene where the NEW look dominates.
+
+Order your states by `from`, earliest first.
+
+## Continuity across the chapter boundary
+
+The previous chapters' timelines are above. If a character enters this chapter
+looking exactly as they left the last one, their first state here **reuses that
+same `signature` verbatim** and sets `change` to the empty string. Reusing the
+signature is what tells the renderer it is the same plate — inventing a new
+spelling for the same look mints a duplicate plate and wastes a whole render.
+
+---
 
 ## Materiality bar — when `signature` may change, and when it must not
 
@@ -139,11 +94,10 @@ expression, each burning a full plate for nothing.
 
 **This gate applies ONLY to `signature`. It never applies to `appearance`.**
 `appearance` keeps describing everything — the oily hand, the gun clutched to
-the chest, the exhausted posture — in full, because `shot_brief` and
-`shot_video_prompt` read `appearance` to write per-shot text, and that detail
-is genuinely wanted there. `signature` is narrower: it names which IDENTITY
-PLATE this shot needs, and a plate only needs to change when what the plate
-ITSELF depicts changes.
+the chest, the exhausted posture — in full, because the downstream prose passes
+read `appearance` to write per-shot text, and that detail is genuinely wanted
+there. `signature` is narrower: it names which IDENTITY PLATE this state needs,
+and a plate only needs to change when what the plate ITSELF depicts changes.
 
 **Only TWO categories of change ever earn a new signature. If a change is not
 one of these two, it is NOT material, no matter how it might feel otherwise:**
@@ -167,14 +121,10 @@ it:
 DO NOT mint a new signature for:
 - **carried or held items, at all, regardless of size** — a keg, a rifle, a
   lantern, a cloth bundle, a letter, a key: NONE of these earn a signature,
-  whether acquiring them, losing them, or however they are held. (This
-  REVERSES an earlier version of this rubric that treated a large carried
-  item's presence/absence as material — it does not, under the current,
-  tighter rule. Only clothing and physique count.)
+  whether acquiring them, losing them, or however they are held.
 - WHERE an already-present prop is held — shouldered, clutched to the chest,
   resting on the ground, propped beside them, handed over, received — all the
-  SAME signature (this was already excluded, and now the carried item itself
-  is excluded too, so this line rarely even comes up)
+  SAME signature.
 - pose, posture or action — standing, walking, asleep, collapsed, exhausted
 - expression or emotion — fearful, cowering, smiling, weeping
 - minor accessories — a bangle, a ring, different shoes, a hat
@@ -191,82 +141,86 @@ roughly a 320px-wide figure. Most of the excluded categories above (a letter
 in a pocket, a key in a hand, a bangle) also happen to fail a plain "would
 this be visible on a 320px figure" gut check — that correlation is WHY they
 feel obviously excluded, but the actual test is always the two categories
-above, not pixel size. A full coat or a saree also happens to pass that gut
-check, which is a useful sanity cross-check, never the rule itself.
+above, not pixel size.
 
 There is no cap of any kind on how many distinct signatures a character may
 accumulate over a story — mint as many as the story's actual clothing/physique
 changes genuinely require. This bar is about PRECISION (only mint for the two
 categories above), never about limiting the count.
 
-### Worked examples — real cases from this bundle's own runs
+---
 
-KEEP (these earn a signature):
-- `arun_oilskins` ← changedThisShot: "puts on oilskins" — **CLOTHING**, garment
-  put on.
-- `arun_soaked` ← changedThisShot: "removes oilskins, clothes become soaked" —
-  **CLOTHING**, garment removed AND the remaining clothing soaked through
-  across the whole figure.
-- `arun_grey_coat` ← changedThisShot: "puts on stiff grey coat" — **CLOTHING**,
-  garment put on.
-- `arun_coat_removed` (renamed from an earlier, misleading `arun_holding_coat`
-  — name it for the REMOVAL, not for the holding that follows) ←
-  changedThisShot: "removes grey coat, now holding it" — **CLOTHING**, garment
-  removed. (The fact that he is now HOLDING it is not what earns the
-  signature — removing it is. If he later shifted it to under his arm, that
-  would NOT earn another signature — see the carried-item exclusion above.)
+## Locations
 
-DROP (these do NOT earn a signature — real ledger entries that WRONGLY minted
-one under an earlier, looser version of this rubric):
-- `meera_satchel_clutched` ← changedThisShot: "clutches satchel to chest" —
-  a carried item's POSITION. Not clothing, not physique. DROP; fold back into
-  whatever signature she already had, with `appearance` updated to mention
-  she is now clutching the satchel.
-- `arun_soaked_lantern` ← changedThisShot: "holds hand-held lantern" — a
-  carried item. Carried items NEVER earn a signature now, regardless of size.
-  DROP.
-- `meera_cloth_bundle` ← changedThisShot: "carries cloth bundle" — a carried
-  item. DROP.
-- `arun_damp` ← changedThisShot: "clothes become damp" — a degree-of-degree
-  fade on the SAME clothing that was already soaked (`arun_soaked`); the
-  garments themselves did not change again. DROP; keep signature `arun_soaked`
-  and, if wanted, note the drying in `appearance` only.
-- `arun_letter_pocket` ← changedThisShot: "tucks official letter into shirt
-  pocket" — not visible at all (inside a pocket), and not a clothing or
-  physique change either way. DROP.
-- `meera_damp_dress` ← changedThisShot: "dress is damp and clinging" — this
-  LOOKS similar to `arun_soaked` but is NOT the same case: her dress never
-  came off, went on, or was replaced — it only got wetter. That is a
-  degree-of-wetness change on UNCHANGED clothing, which is excluded, unlike
-  `arun_soaked` where the oilskins actually came off. DROP.
-- `meera_holding_key` ← changedThisShot: "receives brass oil store key" — a
-  carried/held item. DROP.
-- **Superseded call:** an earlier version of this rubric's own worked example
-  said "picks up a keg" (a carried item's presence) DOES earn a signature. It
-  does NOT, under the current rule — carried items are excluded categorically
-  now, however large. If a keg is ever picked up again, that is now a DROP
-  case exactly like the ones above, not a KEEP case.
+Same shape, and usually **empty**.
 
-Kept from the original worked examples, still correct under the tightened
-rule: `rip__asleep` — no (pose, not clothing/physique).
-`rip__bearded_rusty_gun`'s BEARD half is still a correct mint — a foot-long
-gray beard grown from clean-shaven is a BODY PHYSIQUE change (it permanently
-changes the head/face's form). Its GUN half is not itself what earns the
-signature (a carried item never is); the beard alone is sufficient.
-- `changedThisShot`: a short phrase naming what changed AT this shot (e.g.
-  "grows long gray beard", "picks up torch") — or the literal string `"none"`
-  if this shot carries the state forward unchanged (whether from earlier in
-  this chapter, or folded forward from the previous chapter).
+**A location entry needs at least TWO states, and the schema enforces it.** That
+is the whole test, and it removes the judgement call: a location belongs in
+`locations` only if its look CHANGES on screen — day turning to night, a room
+wrecked, a season turning, lights cut. One state means it never changed, so the
+entry is invalid and the location simply does not go in the array.
 
-Output ONLY the JSON object matching the required schema. `chapterId` MUST be
-exactly `{{item_id}}`. `shots` must have EXACTLY ONE entry per shot in
-`{{chapter_shots}}`'s `shots` array, in the SAME order — cover EVERY shot in
-THIS chapter and ONLY this chapter's shots; never invent a shot, never skip
-one, never include another chapter's. **This includes every shot whose
-`characterPresence` is `"none"` — that shot gets its own `{ "shotId": ...,
-"characters": [] }` entry exactly like any other, it does not get left out of
-`shots` just because it has no characters to report.** A real run of this
-prompt has omitted `"none"`-presence shots from `shots` entirely — that is a
-bug in the OUTPUT, not a reasonable reading of this instruction: this ledger
-is a per-shot array, not a per-character-appearance array, and every shot
-belongs in it.
+A location that recurs across many scenes looking the same is NOT a location
+state; its anchor plate already covers it. Listing it mints a wasted identity
+plate and the output will be rejected.
+
+The materiality bar applies here too: changed light or changed physical state of
+the place, yes; a different camera angle on the same room, no.
+
+---
+
+## Worked example
+
+A chapter of 9 scenes. Ira wears a blazer, changes into a white top and jeans
+partway through, and the audition room goes from daylight to night:
+
+```json
+{
+  "chapterId": "ch_01",
+  "characters": [
+    {
+      "id": "ira_kulkarni",
+      "states": [
+        { "signature": "ira__navy_blazer", "appearance": "Late-30s Indian woman, warm olive complexion, dark espresso hair in a low blowout; structured cream silk blouse under a tailored navy blazer, small gold studs.", "from": "scene_1", "change": "" },
+        { "signature": "ira__white_top_jeans", "appearance": "Same woman, hair now loose and slightly disordered; plain white cotton top and faded denim jeans, worn canvas bag on one shoulder.", "from": "scene_6", "change": "removes the blazer and salwar, changes into a white cotton top and jeans" }
+      ]
+    },
+    {
+      "id": "meher_zaidi",
+      "states": [
+        { "signature": "meher__grey_kurta", "appearance": "Woman in her fifties, close-cropped grey hair, unadorned charcoal-grey cotton kurta, reading glasses on a cord.", "from": "scene_3", "change": "" }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "audition_room",
+      "states": [
+        { "signature": "audition_room__daylight", "appearance": "Cramped room, scuffed off-white walls, folding metal table, weak blue daylight through a slatted blind.", "from": "scene_3", "change": "" },
+        { "signature": "audition_room__night_tungsten", "appearance": "Same cramped room, now lit only by a single overhead tungsten bulb, the window black.", "from": "scene_8", "change": "day has turned to night" }
+      ]
+    }
+  ]
+}
+```
+
+Note what is NOT there: Meher gets ONE state across every scene she appears in,
+because she never changes clothes. Ira gets two, not nine. Neither has a state for
+holding the business card, sitting down, or crying.
+
+---
+
+# BEFORE YOU ANSWER — check these five
+
+1. **Every `from` is a `scene_<N>` id that appears in the outline above**, and
+   belongs to THIS chapter. No shot ids, no invented scenes.
+2. **No character has two states with the same `signature`.** If two entries
+   describe the same look, they are one state — delete the duplicate.
+3. **Every `signature` change is CLOTHING or PHYSIQUE.** Walk each one and name
+   which of the two it is. If you cannot, it is not material — merge it back.
+4. **A character entering unchanged from a previous chapter reuses that
+   chapter's exact signature**, with `change` as the empty string.
+5. **Every `id` is a story-bible id copied verbatim** — never a display name,
+   never invented. A character not in the bible does not belong here.
+
+This call is for chapter: {{item_id}} — cover only this chapter's scenes.

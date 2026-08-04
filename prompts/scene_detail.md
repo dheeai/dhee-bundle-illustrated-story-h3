@@ -9,6 +9,25 @@ on its own.
 Story bible (recurring visual identities, with ids):
 {{story_bible}}
 
+## Each character's appearance AT YOUR SCENE — already decided, do not re-decide
+
+{{character_state}}
+
+This is the appearance timeline, authored before the shots exist. Each state lists
+a `from` scene id and holds until the next one. **Find your own section's scene
+number, and read off what each present character looks like at that point.**
+
+- **Describe them in that state.** If Ira is in the white top and jeans by your
+  scene, she is in the white top and jeans — not the blazer she wore earlier.
+- **Do not invent a change.** You are not authorising wardrobe changes; the
+  timeline already fixed them. If no state changes at your scene, nobody changes
+  clothes in your shots.
+- **Do not restate the state as a change.** Describe the look as simply true, not
+  as something that just happened.
+
+The renderer resolves each shot's reference plate from this same timeline, so a
+shot whose prose contradicts it gets a picture of the wrong outfit.
+
 ## You are NOT given the screenplay. Your dialogue is in your own section.
 
 There is deliberately no screenplay in this prompt. The outline pass held each

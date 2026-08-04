@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "license": "MIT",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
@@ -160,6 +160,7 @@
     {
       "id": "protagonist_photo",
       "kind": "file",
+      "path": "inputs/protagonist_photo.png",
       "required": false,
       "label": "Protagonist photo (optional)",
       "description": "A real photograph of the lead. Supply it and H3 uses this face on EVERY clip instead of the generated character anchor, so the protagonist is a specific real person rather than an invented one. Leave empty to use the anchors the bundle generates from the story bible. One clear, well-lit, front-facing head-and-shoulders frame works best; H3 scales it to the render's pixel area, so a huge file buys nothing."
@@ -167,6 +168,7 @@
     {
       "id": "location_photo",
       "kind": "file",
+      "path": "inputs/location_photo.png",
       "required": false,
       "label": "Location photo (optional)",
       "description": "A real photograph of the primary location. Supply it and it replaces the generated location plate on every clip. Only ONE background plate survives per clip (H3 treats extra backgrounds as clutter), so this displaces the generated one rather than adding to it."
@@ -734,6 +736,10 @@
           "usage": "context"
         },
         {
+          "from": "character_state",
+          "usage": "context"
+        },
+        {
           "from": "narration",
           "usage": "context"
         },
@@ -757,7 +763,8 @@
           "maxTokens": 6000,
           "concurrency": 4,
           "structuredMode": "schema",
-          "_comment_spokenlines_one_shot": "v0.5.2 fixes a bug INTRODUCED by v0.5.0's own prompt. The spokenLines instruction read 'One entry per shot, in order', which the model read as 'every shot gets an entry'. With ONE line and TWO shots it put the SAME line on both, so the finished film would speak it twice in a row -- trading the old cross-SECTION duplication for a new within-SECTION one. Measured on unseeing_role (35 sections): 6 repeated dialogue values, and 5 of the 6 were a single line duplicated across two shots of the SAME section (scene_13/23/28/5/2), caught at the plan checkpoint before any clip rendered. The prompt now states that each entry appears in EXACTLY ONE shot, that shots outnumbering lines are WORDLESS (no dialogue, no speaker), and that shot count and line count are independent -- extra shots are not slots to fill. A terminal check asks the model to list its own dialogue values and delete any line appearing twice. Note what the same run proved about v0.5.0 itself: of 21 lines across 35 sections and 2 chapters, only two were assigned to more than one section -- 'Ira Kulkarni.' (13 chars) and 'Thank you.' (10 chars), both genuinely repeated in the source story -- while every substantive line (255, 78, 64, 45, 27 chars) had exactly one owner. hunt2 pre-fix had 13 duplicated lines including 90+ char speeches. Cross-section leakage is fixed; this was a separate, self-inflicted regression on top of it."
+          "_comment_spokenlines_one_shot": "v0.5.2 fixes a bug INTRODUCED by v0.5.0's own prompt. The spokenLines instruction read 'One entry per shot, in order', which the model read as 'every shot gets an entry'. With ONE line and TWO shots it put the SAME line on both, so the finished film would speak it twice in a row -- trading the old cross-SECTION duplication for a new within-SECTION one. Measured on unseeing_role (35 sections): 6 repeated dialogue values, and 5 of the 6 were a single line duplicated across two shots of the SAME section (scene_13/23/28/5/2), caught at the plan checkpoint before any clip rendered. The prompt now states that each entry appears in EXACTLY ONE shot, that shots outnumbering lines are WORDLESS (no dialogue, no speaker), and that shot count and line count are independent -- extra shots are not slots to fill. A terminal check asks the model to list its own dialogue values and delete any line appearing twice. Note what the same run proved about v0.5.0 itself: of 21 lines across 35 sections and 2 chapters, only two were assigned to more than one section -- 'Ira Kulkarni.' (13 chars) and 'Thank you.' (10 chars), both genuinely repeated in the source story -- while every substantive line (255, 78, 64, 45, 27 chars) had exactly one owner. hunt2 pre-fix had 13 duplicated lines including 90+ char speeches. Cross-section leakage is fixed; this was a separate, self-inflicted regression on top of it.",
+          "_comment_states_before_shots": "v0.8.0: character_state is now an INPUT here, which is the point of inverting the chain -- shots are authored KNOWING each character's appearance at that scene, instead of appearance being annotated onto shots that already exist. DELIBERATELY still NOT given director_screenplay: v0.5.0 removed it because feeding the whole whole-film screenplay to this per-section pass is what caused cross-section dialogue duplication (13 lines duplicated on a 35-section film, one in four scenes). The screenplay still reaches shots -- via chapter_outline, which reads its own chapter's screenplay and records spokenLines per section -- so 'screenplay broken down to shots' holds through the outline rather than by handing every section the whole script again."
         }
       },
       "displayCapability": "scene.detail"
@@ -806,43 +813,6 @@
       "displayCapability": "scene.plan"
     },
     {
-      "id": "chapter_shots",
-      "displayName": "Chapter Shots (per-chapter shot slice, no LLM)",
-      "kind": "collection",
-      "itemSource": "chapters",
-      "itemKey": "chapters",
-      "inputs": [
-        {
-          "from": "chapters",
-          "usage": "input",
-          "scope": "matching"
-        },
-        {
-          "from": "chapter_outline",
-          "usage": "input",
-          "scope": "all"
-        },
-        {
-          "from": "scenes_plan",
-          "usage": "input"
-        }
-      ],
-      "outputs": {
-        "format": "json",
-        "pattern": "plans/chapter_shots/{{item_id}}.json"
-      },
-      "runner": {
-        "tool": "plan.chapter_shots",
-        "config": {
-          "outputPath": "plans/chapter_shots/{{item_id}}.json",
-          "chaptersInput": "chapters",
-          "outlinesInput": "chapter_outline",
-          "shotPlanInput": "scenes_plan"
-        }
-      },
-      "displayCapability": "scene.plan"
-    },
-    {
       "id": "chapter_state",
       "displayName": "Chapter Character Appearance State (per-chapter ledger, carried forward)",
       "kind": "collection",
@@ -850,7 +820,12 @@
       "itemKey": "chapters",
       "inputs": [
         {
-          "from": "chapter_shots",
+          "from": "chapter_screenplay",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapter_outline",
           "usage": "input",
           "scope": "matching"
         },
@@ -863,15 +838,9 @@
           "usage": "context"
         },
         {
-          "from": "chapter_screenplay",
-          "usage": "context",
-          "scope": "matching"
-        },
-        {
           "from": "chapter_state",
           "usage": "context",
-          "scope": "previousN",
-          "n": 1
+          "scope": "previousN"
         }
       ],
       "outputs": {
@@ -889,7 +858,8 @@
           "temperature": 0.2,
           "structuredMode": "schema",
           "maxTokens": 12000,
-          "concurrency": 1
+          "concurrency": 1,
+          "_comment_timeline_inversion": "v0.8.0 INVERTS this node. It used to consume chapter_shots and emit an exhaustive PER-SHOT ledger -- one row per shot restating every present character's full appearance. That made states DERIVED FROM shots, so a shot could never have been authored against a known state, and the schema's own demand ('every shot must appear') is documented as unenforceable in dhee-runner-story-chapters/shotBrief.ts: 'found unenforceable across three consecutive runs', with a skipped shot silently falling back to its base anchor. On a 326-shot film that is hundreds of near-identical rows and one omission corrupts a clip. It now reads the SCREENPLAY (where changes of clothes actually happen) plus the OUTLINE (for the scene ids to anchor to) and emits an ordered TIMELINE per character: {signature, appearance, from:'scene_12', change}. plan.character_states forward-fills that onto every shot deterministically, so the model writes ~2-4 rows per character instead of ~326 and the per-shot assignment is arithmetic. Locations use the identical shape for genuine look changes (day->night, a wrecked room). chapter_shots is DELETED -- chapter_state was its only consumer. The materiality bar (only CLOTHING or PHYSIQUE mints a new signature) is preserved verbatim; it is hard-won -- a real run minted 12 states where 4 were material."
         }
       },
       "displayCapability": "character.state"
@@ -933,6 +903,10 @@
         {
           "from": "character_state",
           "usage": "input"
+        },
+        {
+          "from": "scenes_plan",
+          "usage": "input"
         }
       ],
       "outputs": {
@@ -943,7 +917,9 @@
         "tool": "plan.character_states",
         "config": {
           "outputPath": "plans/character_states.json",
-          "ledgerInput": "character_state"
+          "ledgerInput": "character_state",
+          "shotsInput": "scenes_plan",
+          "_comment_forward_fill": "v0.8.0: shotsInput=scenes_plan added because the ledger is now a TIMELINE, not a per-shot table. plan.character_states selects its mode from the ledger's SHAPE -- characters[].states[] triggers forward-fill, shots[] uses the legacy transcription -- and forward-fill needs the ordered shot list to assign states onto. Output shape is unchanged ({states, byShot, baseByCharacter}), so every consumer (comfy.minimax_h3_r2v, image.sheet_split) keeps working."
         }
       },
       "displayCapability": "character.state"
@@ -1355,7 +1331,7 @@
               "job": "the location, its architecture, surfaces, set dressing and the quality of its light"
             }
           ],
-          "_comment_pinned_operator_photos": "v0.7.0 lets an operator hand the bundle REAL photographs. Previously every plate was generated (comfy.tti anchors from the story bible), and there was no way to say 'the lead looks like THIS person'. referenceInputs could not express it either: it resolves the prompt's own references[] by id, so a plate only reaches a clip if the AUTHORING MODEL cites it -- and the model has no way to know an operator input exists. pinnedRefs bypasses references[] and attaches the photo to EVERY clip, which is the right semantics: 'use this actress's face' is a constraint on the whole film, not a per-scene creative decision. Pinned plates are PREPENDED before routeRefs, and that ordering is what makes them OVERRIDE rather than merely add -- routeRefs dedupes by path, keeps only the FIRST background (so location_photo displaces the generated location plate) and fills subject slots in order (so protagonist_photo takes the lowest <Subject N> number and survives the maxRefs cap). Both inputs are OPTIONAL: unsupplied means 'use the generated anchors', and an unreadable file is skipped with a note rather than failing the run. Note the interaction with sheetPanels: generated character plates are multi-view SHEETS that get split into single views, whereas an operator photo is already a single view and passes through untouched."
+          "_comment_pinned_operator_photos": "v0.7.0 lets an operator hand the bundle REAL photographs. Previously every plate was generated (comfy.tti anchors from the story bible), and there was no way to say 'the lead looks like THIS person'. referenceInputs could not express it either: it resolves the prompt's own references[] by id, so a plate only reaches a clip if the AUTHORING MODEL cites it -- and the model has no way to know an operator input exists. pinnedRefs bypasses references[] and attaches the photo to EVERY clip, which is the right semantics: 'use this actress's face' is a constraint on the whole film, not a per-scene creative decision. Pinned plates are PREPENDED before routeRefs, and that ordering is what makes them OVERRIDE rather than merely add -- routeRefs dedupes by path, keeps only the FIRST background (so location_photo displaces the generated location plate) and fills subject slots in order (so protagonist_photo takes the lowest <Subject N> number and survives the maxRefs cap). Both inputs are OPTIONAL: unsupplied means 'use the generated anchors', and an unreadable file is skipped with a note rather than failing the run. Note the interaction with sheetPanels: generated character plates are multi-view SHEETS that get split into single views, whereas an operator photo is already a single view and passes through untouched. v0.7.1 BUGFIX: both inputs shipped in v0.7.0 WITHOUT a `path` field, which broke every run of this bundle -- walker.ts resolves a kind:'file' input with resolve(projectDir, d.path), so an absent path threw 'The paths[1] argument must be of type string. Received undefined' before any node executed. `required:false` does NOT make `path` optional: the walker needs a path to test existsSync against, and only THEN does required:false let it skip a missing file. So an optional file input still declares where the file would live."
         }
       },
       "displayCapability": "shot.video"

@@ -400,6 +400,17 @@ things that get missed most often; everything else above is context.
    A borrowed line does not enrich your scene; it makes the film say that line
    twice, because the scene it actually belongs to is also staging it. If
    deleting leaves a shot with no dialogue, that shot is silent, which is fine.
+0c. **`detailedDescription` MUST contain the literal marker `[Shot 1]`** — those
+   characters, in square brackets, with NO timestamp on it. Later shots are
+   `[Shot N] At MM:SS.mmm`. H3 is trained on these markers; prose without them is
+   a paragraph, not a scene. A measured run returned a 1,976-character
+   description with no marker anywhere while its own `spokenLines` held both
+   lines correctly — the structure was simply omitted.
+
+0d. **`multi_cut` needs at least TWO `[Shot N]` markers**, `locked_single` and
+   `continuous_moving` need exactly ONE. Declaring `multi_cut` with one marker is
+   a contradiction and is rejected.
+
 1. **Find every `<d>` you wrote. Look at the words immediately before it. If
    there is no `(S1)` / `(S2)` there, ADD ONE NOW.** A spoken line with no
    speaker id is a line with nobody saying it — H3 has the words and no voice to
@@ -419,3 +430,9 @@ things that get missed most often; everything else above is context.
    `Push In`, `Arc Shot`, `Static Shot`, `Tracking Shot`, `Pan Left`…
 5. **Every subject you mention is `<Subject N>`**, numbered in your
    `references[]` order, and there is no bare `<Picture N>` anywhere.
+
+---
+
+**Emit the JSON object and nothing else.** First character `{`, last character
+`}`. No preamble, no `Here is the scene prompt for …`, no markdown fence. A
+measured run began with prose before a fenced block and was discarded unparsed.

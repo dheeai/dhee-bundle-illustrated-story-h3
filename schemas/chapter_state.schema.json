@@ -1,7 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["chapterId", "shots"],
+  "required": [
+    "chapterId",
+    "characters",
+    "locations"
+  ],
   "additionalProperties": false,
   "properties": {
     "chapterId": {
@@ -9,45 +13,103 @@
       "pattern": "^ch_[0-9]+$",
       "description": "MUST equal ctx.itemId — this chapter's own id, e.g. 'ch_02'."
     },
-    "shots": {
+    "characters": {
       "type": "array",
-      "minItems": 1,
-      "description": "One entry per shot in THIS CHAPTER's chapter_shots.shots, in the SAME order. Every shot must appear, even with an empty characters[] array. Only this chapter's own shots — never another chapter's.",
+      "description": "One entry per anchored/recurring CHARACTER who appears anywhere in this chapter. A character who never appears in this chapter is omitted entirely. Empty array only if this chapter has no anchored characters at all.",
       "items": {
         "type": "object",
-        "required": ["shotId", "characters"],
+        "required": [
+          "id",
+          "states"
+        ],
         "additionalProperties": false,
         "properties": {
-          "shotId": {
+          "id": {
             "type": "string",
-            "pattern": "^scene_[0-9]+_shot_[0-9]+$",
-            "description": "MUST match a shots[].id from THIS chapter's chapter_shots exactly."
+            "description": "The story_bible character id, verbatim (e.g. 'ira_kulkarni'). Never a display name, never invented."
           },
-          "characters": {
+          "states": {
             "type": "array",
-            "description": "Every anchored/recurring character physically present in this shot and their current appearance state as of this shot. Empty if no recurring character is present.",
+            "minItems": 1,
+            "description": "This character's appearance TIMELINE through this chapter, in screen order. ONE entry per point where the appearance MATERIALLY changes — not one per shot, and not one per scene. A character who looks the same all chapter has exactly ONE entry. Each state holds from its own `from` scene until the next state's `from`; the renderer forward-fills every shot in between, so an unchanged appearance is never restated.",
             "items": {
               "type": "object",
-              "required": ["id", "appearance", "signature", "changedThisShot"],
+              "required": [
+                "signature",
+                "appearance",
+                "from",
+                "change"
+              ],
               "additionalProperties": false,
               "properties": {
-                "id": {
+                "signature": {
                   "type": "string",
-                  "description": "The story_bible character id."
+                  "description": "Short, stable lowercase key for this exact appearance state, e.g. 'ira__white_top_jeans'. This is the STATE KEY: an identical appearance MUST reuse an identical signature, including across chapters — if the previous chapter's ledger already named this look, copy that signature verbatim. A new signature mints a whole new identity plate downstream, so only a material change earns one."
                 },
                 "appearance": {
                   "type": "string",
-                  "minLength": 10,
-                  "description": "FULL current wardrobe + props-held + condition (dirt/wet/wounds/hair) as of THIS shot — a complete, standalone description, not a diff against a prior shot or a prior chapter."
+                  "description": "FULL standalone description of the character's look while this state holds: garments, props held, condition (dirt/wet/wounds/hair). Complete in itself — never a diff against a previous state, never 'as before'. Downstream prose passes read THIS field, so keep all the detail here even where it does not earn a new signature."
                 },
+                "from": {
+                  "type": "string",
+                  "pattern": "^scene_[0-9]+$",
+                  "description": "The SECTION id at which this state comes into force — 'scene_12'. Must be a scene that exists in THIS chapter's own range. For a character's FIRST state, use the first scene of this chapter in which that character appears. The state holds from this scene until the next state's `from`, so this is the only positional information needed."
+                },
+                "change": {
+                  "type": "string",
+                  "description": "One short phrase naming what visibly changed at `from` (e.g. 'removes the blazer, puts on a white cotton top'). Use the empty string for a character's FIRST state in the story, which changed from nothing. If this state continues an appearance already established in a PREVIOUS chapter, also use the empty string and reuse that chapter's signature."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "description": "LOCATIONS whose own appearance materially CHANGES within this chapter — daylight to night, a room before and after it is wrecked, a season turning, the lights cut. Each entry therefore needs at least TWO states (the before and the after). Most chapters need NONE of these: use an empty array. A location that simply recurs across scenes unchanged must NOT appear here — its anchor plate already covers it, and adding it mints a wasted identity plate.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "states"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The story_bible location id, verbatim."
+          },
+          "states": {
+            "type": "array",
+            "minItems": 2,
+            "description": "Ordered appearance timeline for this location, same rules as a character's: one entry per material change, each holding from its `from` scene onward. MINIMUM TWO ENTRIES — a location with only one state is by definition unchanging, and its look is already covered by its anchor plate, so it does not belong in this array at all. If a location never changes on screen, OMIT it. This is a structural rule rather than a request: a single-state location entry is invalid, so the ambiguity cannot survive.",
+            "items": {
+              "type": "object",
+              "required": [
+                "signature",
+                "appearance",
+                "from",
+                "change"
+              ],
+              "additionalProperties": false,
+              "properties": {
                 "signature": {
                   "type": "string",
-                  "minLength": 3,
-                  "description": "Short, stable lowercase key for this exact appearance state, e.g. 'rip__bearded_rusty_gun'. MUST be the SAME key an earlier chapter used for this same visual state — a deterministic dedupe pass downstream keys on this field, and a drifted signature silently generates a redundant identity plate. Gated on the MATERIALITY BAR (see prompts/chapter_state.md): only TWO categories of change ever earn a new signature — CLOTHING (garments put on, taken off, or replaced; a whole garment soaked/coated across the entire figure) and BODY PHYSIQUE (an amputated limb, morphing into another being, a beard/hair change that alters the head/face's form). NOT for carried/held items regardless of size (a keg, a rifle, a lantern — presence, absence, or how they're held), pose/posture/action, expression, minor accessories, localized soiling, or a degree-of-degree fade on an already-changed condition (soaked→damp→drying is one signature). `appearance` itself is NEVER gated by this bar and stays full-fidelity regardless. No cap on the number of distinct signatures; this bar is about precision, not a ceiling."
+                  "description": "Stable lowercase state key, e.g. 'audition_room__night_tungsten'."
                 },
-                "changedThisShot": {
+                "appearance": {
                   "type": "string",
-                  "description": "One short phrase naming the delta applied at this exact shot (e.g. 'grows long gray beard'), or the literal string 'none' if this shot carries the character's prior state (from earlier in this chapter, or folded forward from the previous chapter) forward unchanged."
+                  "description": "FULL standalone description of the location while this state holds: light, surfaces, dressing, weather, damage."
+                },
+                "from": {
+                  "type": "string",
+                  "pattern": "^scene_[0-9]+$",
+                  "description": "The SECTION id at which this state comes into force, e.g. 'scene_12'. Must exist in THIS chapter's range."
+                },
+                "change": {
+                  "type": "string",
+                  "description": "Short phrase naming what changed (e.g. 'day has turned to night'), or the empty string for the location's first state."
                 }
               }
             }
