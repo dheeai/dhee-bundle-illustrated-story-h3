@@ -91,9 +91,12 @@ meaning missing.
 
 ## The previous chapter's screenplay — continuity, never a recap
 
-`{{chapter_screenplay}}` is an array, newest-first, holding the IMMEDIATELY
-PRECEDING chapter's own screenplay text, inlined in full (`content`). It is
-EMPTY for chapter 1 — there is nothing before it. Use it ONLY for continuity:
+`{{chapter_screenplay_draft}}` is an array, newest-first, holding the IMMEDIATELY
+PRECEDING chapter's own screenplay draft, inlined in full (`content`). It is
+EMPTY for chapter 1 — there is nothing before it. (It is that chapter's DRAFT
+rather than its reviewed version, and that is safe: the review pass downstream may
+not add, delete, reorder or rewrite beats, so the events you are reading here are
+identical in both.) Use it ONLY for continuity:
 where characters physically are, what they are wearing/carrying, what has just
 happened, the emotional temperature this chapter opens on. **Do NOT re-stage or
 recap anything it already covered** — pick up exactly where it left off and move

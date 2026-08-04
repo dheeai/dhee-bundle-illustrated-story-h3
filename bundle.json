@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -542,8 +542,8 @@
       "displayCapability": "setting.image"
     },
     {
-      "id": "chapter_screenplay",
-      "displayName": "Chapter Screenplay (per-chapter plain-English source of truth, carried forward)",
+      "id": "chapter_screenplay_draft",
+      "displayName": "Chapter Screenplay (director's draft)",
       "kind": "collection",
       "itemSource": "chapters",
       "itemKey": "chapters",
@@ -570,7 +570,7 @@
           "usage": "context"
         },
         {
-          "from": "chapter_screenplay",
+          "from": "chapter_screenplay_draft",
           "usage": "context",
           "scope": "previousN",
           "n": 1
@@ -578,7 +578,7 @@
       ],
       "outputs": {
         "format": "md",
-        "pattern": "plans/chapter_screenplay/{{item_id}}.md"
+        "pattern": "plans/chapter_screenplay_draft/{{item_id}}.md"
       },
       "runner": {
         "tool": "llm.generate",
@@ -589,10 +589,55 @@
           "tier": "heavy",
           "temperature": 0.6,
           "maxTokens": 20000,
-          "concurrency": 1
+          "concurrency": 1,
+          "outputPath": "plans/chapter_screenplay_draft/{{item_id}}.md",
+          "_comment_draft": "v0.16.0: this is the DIRECTOR'S DRAFT. It keeps prompts/chapter_screenplay.md and all of the adaptation authoring; the node id moved so that `chapter_screenplay` can become the REVIEWED output. Doing it this way means every downstream consumer (director_screenplay, chapter_outline, chapter_state) and every {{chapter_screenplay}} template variable keeps working untouched -- llm.generate derives template vars from input IDs, so repointing consumers instead would have silently broken two prompts. KNOWN LIMITATION: the previousN continuity carry-forward reads the previous chapter's DRAFT, not its reviewed version, because chapter_screenplay depends on this node and reading it back would be a node-level cycle. That is safe only because the reviewer is forbidden from adding, deleting, reordering or rewriting BEATS -- so the events continuity depends on are identical in both."
         }
       },
       "displayCapability": "screenplay.prose"
+    },
+    {
+      "id": "chapter_screenplay",
+      "displayName": "Chapter Screenplay (coverage review)",
+      "kind": "collection",
+      "itemSource": "chapters",
+      "inputs": [
+        {
+          "from": "chapter_text",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapter_screenplay_draft",
+          "usage": "input",
+          "scope": "matching"
+        },
+        {
+          "from": "chapters",
+          "usage": "context"
+        },
+        {
+          "from": "story_bible",
+          "usage": "context"
+        }
+      ],
+      "outputs": {
+        "format": "md",
+        "pattern": "plans/chapter_screenplay/{{item_id}}.md"
+      },
+      "runner": {
+        "tool": "llm.generate",
+        "config": {
+          "_comment": "v0.16.0 COVERAGE CRITIC. Closes the loop that the v0.15.0 Adaptation table opened. The table is supposed to hold one row per meaningful element of the chapter, each with a disposition saying HOW it reaches the audience; an element with NO row is the chapter's meaning going missing invisibly, and a single forward authoring pass cannot catch its own omissions. This pass re-reads the SOURCE PROSE against the table -- in that direction, because reading the draft and asking 'does this look complete' always says yes.\n\nIt is deliberately a REVISE pass, not a report. A critic whose output nothing consumes is a file nobody reads, so this one emits the corrected screenplay and takes over the `chapter_screenplay` node id -- downstream is unchanged and cannot skip it.\n\nIts mandate is narrow and its default is NO CHANGE: it may only fix the five named defects (unaccounted element, interiority marked DRAMATISE, a disposition that lands in no beat, an unjustified CUT, broken table<->beat correspondence), and it MUST NOT add, delete, reorder or rewrite beats -- only add a line/prop/sound to an existing beat so a disposition lands. That constraint is what keeps the draft-based previousN continuity valid, and it is why this is not just a second author. A clean draft is output verbatim.\n\nAppends a `### Coverage Audit` section recording what was found and changed, so the pass is auditable rather than a silent rewrite -- the same principle as the disposition table itself.\n\nSequencing note: this was built AFTER the disposition table on purpose. bundles_removed_no_direction_planning/ holds two agentic bundles that were pulled for lacking direction planning; a critic with no concrete artifact to check against has nothing to do but re-author. The table is that artifact.",
+          "promptTemplate": "prompts/chapter_screenplay_review.md",
+          "outputPath": "plans/chapter_screenplay/{{item_id}}.md",
+          "outputFormat": "markdown",
+          "tier": "heavy",
+          "temperature": 0.3,
+          "maxTokens": 20000,
+          "concurrency": 1
+        }
+      }
     },
     {
       "id": "director_screenplay",
@@ -1370,5 +1415,6 @@
     ]
   },
   "_comment_v0_14_0": "Upscale pass REMOVED entirely (founder directive). v0.12.0 had swapped comfy.rtx_vsr -> comfy.ltx_upscale on the premise that a generative refine could rebuild detail a cheap render lost; a ground-truth test the same day falsified it -- comfy.ltx_upscale is measurably WORSE than a free ffmpeg lanczos upscale on H3 output, softer than its own input, and unaffected by prompt conditioning. See final_video._comment_no_upscale. Consequences: final_video concatenates scene_clip directly, the comfy.ltx_upscale runner dep and the `upscale` project field are gone, and the bundle is 30 nodes. The `resolution` field still governs H3's own render size, which is where the real quality/cost lever is (480p 55s vs 720p 154s vs 768p 205s at 124 frames -- a 3.7x spread). Render at the resolution you intend to deliver; there is no sharpening pass to lean on.",
-  "_comment_v0_15_0": "chapter_screenplay now performs real ADAPTATION rather than transcription. The pass previously asked the director to \"compress ruthlessly\" and framed the job as \"what a viewer standing in the room would see and hear\" -- which points at filming the paragraphs in order. But prose is mostly interiority, backstory, description and summary, and a viewer in the room sees NONE of that, so the hardest and most common adaptation problem (a paragraph of someone thinking) had no instruction at all: it got dropped and the chapter's meaning went with it. Selection was also BINARY (written as a beat, or silently gone) and UNRECORDED, so nothing downstream could tell a deliberate omission from an oversight.\n\nNew required  section: every meaningful element of the chapter gets exactly one row with a disposition -- DRAMATISE (becomes a beat) / DIALOGUE / SETTING / SOUND / IMPLY (the cut carries it) / CUT (with a reason). Only DRAMATISE rows become beats, one-to-one and in order, each headed . Interiority may NEVER be DRAMATISE. Four consequences: the director gets the craft vocabulary the prompt was missing; interiority must land somewhere instead of evaporating; omissions become auditable (CUT + reason) so no later stage helpfully re-adds them; and THE SECONDS BUDGET NOW BITES AT SELECTION TIME (~durationSec/8 DRAMATISE rows) instead of being asserted upstream and then enforced by a downstream clamp with no judgement -- the v0.8.1 failure where a 35-section film came out 4m34s against a 6m34s plan. SOUND is called out as the under-used lever: H3 generates synced audio from the same prompt, so conveying something by sound is free.\n\nTerminal self-check added (this bundle has measured that the terminal position holds best), verifying row coverage, the DRAMATISE count against budget, beat<->row correspondence, that no DRAMATISE row is interiority, that every non-DRAMATISE row names a beat that really carries it, and that every CUT has a reason.\n\nPrompt-only change -- chapter_screenplay emits markdown and has no outputSchema. NOT YET RUN. The design discussion also identified a follow-on: with the disposition table in place, \"did we lose the story?\" becomes a checkable question and a coverage-critic pass has something concrete to check against. That is deliberately NOT built yet -- note that bundles_removed_no_direction_planning/ holds two agentic bundles that were pulled for lacking direction planning, i.e. agency without a plan to work against. Dispositions first, critic second."
+  "_comment_v0_15_0": "chapter_screenplay now performs real ADAPTATION rather than transcription. The pass previously asked the director to \"compress ruthlessly\" and framed the job as \"what a viewer standing in the room would see and hear\" -- which points at filming the paragraphs in order. But prose is mostly interiority, backstory, description and summary, and a viewer in the room sees NONE of that, so the hardest and most common adaptation problem (a paragraph of someone thinking) had no instruction at all: it got dropped and the chapter's meaning went with it. Selection was also BINARY (written as a beat, or silently gone) and UNRECORDED, so nothing downstream could tell a deliberate omission from an oversight.\n\nNew required  section: every meaningful element of the chapter gets exactly one row with a disposition -- DRAMATISE (becomes a beat) / DIALOGUE / SETTING / SOUND / IMPLY (the cut carries it) / CUT (with a reason). Only DRAMATISE rows become beats, one-to-one and in order, each headed . Interiority may NEVER be DRAMATISE. Four consequences: the director gets the craft vocabulary the prompt was missing; interiority must land somewhere instead of evaporating; omissions become auditable (CUT + reason) so no later stage helpfully re-adds them; and THE SECONDS BUDGET NOW BITES AT SELECTION TIME (~durationSec/8 DRAMATISE rows) instead of being asserted upstream and then enforced by a downstream clamp with no judgement -- the v0.8.1 failure where a 35-section film came out 4m34s against a 6m34s plan. SOUND is called out as the under-used lever: H3 generates synced audio from the same prompt, so conveying something by sound is free.\n\nTerminal self-check added (this bundle has measured that the terminal position holds best), verifying row coverage, the DRAMATISE count against budget, beat<->row correspondence, that no DRAMATISE row is interiority, that every non-DRAMATISE row names a beat that really carries it, and that every CUT has a reason.\n\nPrompt-only change -- chapter_screenplay emits markdown and has no outputSchema. NOT YET RUN. The design discussion also identified a follow-on: with the disposition table in place, \"did we lose the story?\" becomes a checkable question and a coverage-critic pass has something concrete to check against. That is deliberately NOT built yet -- note that bundles_removed_no_direction_planning/ holds two agentic bundles that were pulled for lacking direction planning, i.e. agency without a plan to work against. Dispositions first, critic second.",
+  "_comment_v0_16_0": "Coverage critic added, closing the loop v0.15.0's Adaptation table opened. chapter_screenplay_draft authors the adaptation (unchanged prompt); the new chapter_screenplay re-reads the SOURCE PROSE against the draft's disposition table and fixes only what fell through -- unaccounted elements, interiority wrongly marked DRAMATISE, dispositions that land in no beat, unjustified CUTs, broken table<->beat correspondence. It MUST NOT touch beats, so continuity stays valid and it cannot drift into re-authoring; a clean draft passes through verbatim with a `### Coverage Audit` note. Naming is deliberate: the reviewed node keeps the `chapter_screenplay` id so all three downstream consumers and both {{chapter_screenplay}} template variables keep working -- llm.generate derives template vars from input ids, so repointing consumers would have broken chapter_outline.md and chapter_state.md silently. 30 -> 31 nodes; the reduction to pay for it is the chapter_outline collapse (a deterministic split of the now-labelled `#### Beat N` headings), which is planned and not yet built."
 }
