@@ -1,21 +1,35 @@
 {
   "type": "object",
-  "required": ["title", "sections"],
+  "required": [
+    "title",
+    "sections"
+  ],
   "additionalProperties": false,
   "properties": {
-    "title": { "type": "string", "description": "The reader's headline title." },
+    "title": {
+      "type": "string",
+      "description": "The reader's headline title."
+    },
     "sections": {
       "type": "array",
       "minItems": 1,
       "description": "Skeleton of the story's ordered beats — one per eventual film section. Order = final screen order. Expanded into full prose/shots by the scene_detail pass. Since v0.3.0 (the any-length chapter architecture) this is the GLOBAL merge of every chapter's own chapter_outline sections (each chapter contributes >= 1 by its own schema floor) — minItems relaxed from 2 to 1 so a single-chapter, very-short-duration film (e.g. a bare-premise short story at the derived-duration floor) cannot fail validation merely for having one section.",
       "items": {
         "type": "object",
-        "required": ["id", "heading", "mode", "brief", "emotion"],
+        "required": [
+          "id",
+          "heading",
+          "mode",
+          "brief",
+          "emotion"
+        ],
         "additionalProperties": false,
         "properties": {
           "spokenLines": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Carried through UNCHANGED from this section's chapter_outline entry (plan.chapter_merge spreads the whole section object, so no merge logic touches this). The verbatim lines spoken in this beat; empty for a narration section. This is what scene_detail reads INSTEAD of the whole-film screenplay — see the field's description in chapter_outline.schema.json for why. NOT in `required` here on purpose: it is authored upstream, merely relayed here, so a chapter outline that predates the field (or somehow omits it) still merges rather than failing the whole film at the merge step."
           },
           "id": {
@@ -23,7 +37,10 @@
             "pattern": "^scene_[0-9]+$",
             "description": "Sequential: scene_1, scene_2 … MUST use this exact form (not 's01') — downstream steps parse the scene number from it."
           },
-          "heading": { "type": "string", "description": "Section title (a few words)." },
+          "heading": {
+            "type": "string",
+            "description": "Section title (a few words)."
+          },
           "emotion": {
             "type": "string",
             "minLength": 3,
@@ -31,7 +48,10 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["narration", "dialogue"],
+            "enum": [
+              "narration",
+              "dialogue"
+            ],
             "description": "'dialogue' iff a character SPEAKS in this beat — the story gives them a line, direct or faithfully-converted reported speech; otherwise 'narration'. Classify honestly from the story: a dialogue-rich story correctly yields mostly dialogue sections. Carried forward unchanged by the scene_detail pass."
           },
           "brief": {
@@ -41,7 +61,9 @@
           },
           "entities": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Bible ids (characters/locations/objects) VISIBLE across this section — used by the scene_detail pass to re-inject canonical looks. List EVERY character physically present, including anyone the speaker talks to."
           },
           "budgetSec": {
@@ -53,6 +75,10 @@
             "type": "integer",
             "minimum": 1,
             "description": "DETERMINISTIC, injected alongside budgetSec: max(1, round(budgetSec / secondsPerShot)) — floored at 1 and deliberately UNBOUNDED above so it stays proportional to the section's allocated budget rather than becoming a cap (plan.chapter_merge >=0.5.1, secondsPerShot default 8). The exact number of shots the scene_detail pass should emit for this section. Absent exactly when budgetSec is absent."
+          },
+          "speechOverflowSec": {
+            "type": "number",
+            "description": "Seconds by which this section's DIALOGUE exceeds the clip ceiling — injected by plan.chapter_merge (mode:sections) at chapterMerge.ts:499 when speechNeed > the ceiling, alongside a loud warning. It is a DIAGNOSTIC: the beat needs an upstream re-plan (split it, or cut a line), not a longer clip, because the render node physically cannot go past the ceiling. Present only on overflowing sections; absent means no overflow. MUST be declared here even though nothing consumes it: this schema is additionalProperties:false, so before v0.17.0 the merge wrote a field its own output schema forbade and the whole run died with '/sections/N must NOT have additional properties' — but ONLY on dialogue-heavy films, since a section that never overflows never gets the field. A 7-section test story with 4 short lines passes; a 46-section talky one fails."
           }
         }
       }
