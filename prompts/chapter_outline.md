@@ -40,24 +40,35 @@ chapter (if any) carries in, moves, and hands off to the next chapter. Think in
 beats, not locations: every scene should start from ONE question, "what should
 the audience feel here?" — never from "where does this happen?"
 
-Split THIS chapter into ordered SECTIONS that each cover ONE beat/moment. Each
-section becomes roughly 10–16 seconds of finished film — ONE or TWO shots of
-6–10 seconds each — so let this chapter's own `durationSec` drive HOW MANY
-sections you split into: `sections ≈ durationSec ÷ 15`, because a section is
-TWO shots of about 7.5 seconds. Compute this chapter's own number from its own
-`durationSec` — round to the nearest whole number, with a floor of 1 (a very
-short chapter is legitimately a single section).
+Split THIS chapter into ordered SECTIONS that each cover ONE beat/moment.
+
+**A SECTION IS EXACTLY ONE H3 CLIP, and a clip is at most 8 seconds.** That single
+fact sets everything: `sections ≈ durationSec ÷ 8`. Compute this chapter's own
+number from its own `durationSec` — round to the nearest whole number, with a floor
+of 1 (a very short chapter is legitimately a single section).
+
+The shots inside a section are CUTS WITHIN that one clip, not separate clips — so a
+section is typically ONE or TWO shots of about 4 seconds, both inside the same 8
+seconds. Never think of a section as 15 seconds; nothing downstream can render that.
+
+> **Why 8 and not 15:** a measured duration sweep found H3's marginal cost jumps
+> ~3.5x between 8.00s (192 frames) and 9.42s (226 frames), so the renderer caps every
+> clip at 8s. An earlier version of this guidance split at `durationSec ÷ 15`, which
+> budgeted each section ~15s while the renderer could only produce 8 — every section
+> silently lost about 47% of its planned beats, and a 35-section film came out 4m34s
+> against a 6m34s plan. The divisor and the cap are now the same number, so a section
+> budget is a promise the renderer can keep.
 
 **There is NO maximum section count.** This chapter's own `durationSec` is
 already the film's actual, un-capped length for this chapter (derived from the
 whole story's own length, not chosen from a menu) — a chapter granted 400
-seconds gets roughly 27 sections, and that is correct, not excessive. Do not
+seconds gets roughly 50 sections, and that is correct, not excessive. Do not
 compress a chapter's material down to some smaller "reasonable-sounding" count;
 compute the number from `durationSec` and use it. The only place compression
 applies is WITHIN that computed section count: if this chapter's own material
 has more distinct beats than sections, combine adjacent beats into one section's
-shots (a 7.5-second shot holds two or three beats comfortably) — never invent
-extra sections beyond what `durationSec ÷ 15` gives you, and never silently drop
+shots (a 4-second shot holds two beats comfortably) — never invent
+extra sections beyond what `durationSec ÷ 8` gives you, and never silently drop
 a beat instead of folding it in.
 
 **This is PACING GUIDANCE for how you split — it is not what makes the film's
@@ -67,7 +78,7 @@ a deterministic downstream step (`plan.chapter_merge`, mode `sections`) divides
 THIS chapter's own `durationSec` evenly across however many sections you
 create and hands each one an exact `budgetSec`/`targetShotCount` — so the
 film's total duration comes out correct BY CONSTRUCTION regardless of whether
-you hit `durationSec ÷ 15` exactly. Do not read a later duration overshoot as
+you hit `durationSec ÷ 8` exactly. Do not read a later duration overshoot as
 evidence this guidance should be tightened into a hard cap — the fix for that
 lives downstream, deterministically, not here. (This note exists because an
 earlier version of this guidance was once deleted entirely, in the mistaken

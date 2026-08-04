@@ -3,8 +3,8 @@ narrated, animated film. A first pass already produced the film's outline
 skeleton (a title plus one short brief per section); a deterministic merge
 step then injected a duration BUDGET onto each section. Your job is to expand
 YOUR assigned section into full prose, a scene brief, and its shots — each
-shot being one self-contained 4-10 second clip that the video model animates
-on its own.
+shot being a CUT inside this section's single 8-second clip, which the video model
+renders in one pass.
 
 Story bible (recurring visual identities, with ids):
 {{story_bible}}
@@ -291,7 +291,7 @@ inches from the stones") rather than letting it fall between two shots.
 
 **A shot containing a contact moment must be given enough `duration` to play
 the whole interaction — approach, contact, and follow-through — inside that
-one shot.** 8-10 seconds. The contact is the payoff of the beat; if it lands
+one shot.** 6-8 seconds. The contact is the payoff of the beat; if it lands
 on a cut it does not happen at all, because the next clip knows nothing about
 this one.
 
@@ -331,7 +331,7 @@ still.
 ## Shots — exactly `targetShotCount` ordered shots for THIS section
 Bring THIS section to life in exactly `targetShotCount` shots (see "This
 section's duration budget" above — read it from this section's own outline
-entry, do not guess), each a self-contained 4-10 second clip summing to about
+entry, do not guess), each a 3-8 second CUT summing to about
 `budgetSec`. `targetShotCount` is usually 1 or 2 — a section is roughly
 10-16 seconds of film, so 3 is already a busy section. Never pad with a shot
 that doesn't show something new; if `targetShotCount` gives you more room
@@ -343,7 +343,7 @@ buys nothing and costs a lot: each cut is a hard discontinuity with no
 carried state. Cover an exchange in ONE or TWO shots that hold both parties
 in frame (a two-shot, or one over-the-shoulder plus one reaction), and let the
 BODIES carry the exchange — the gesture, the posture shift, the moment a line
-lands on the listener's face. A 4-line back-and-forth is one 8-10 second
+lands on the listener's face. A 4-line back-and-forth is one 8-second
 two-shot, not 4 shots.
 
 Emit every shot for THIS section — and ONLY this section — in the fragment's
@@ -354,8 +354,8 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
 - `scene`: this section's number (int) — must match `<N>` above exactly.
 - `shotNumber`: 1-based position of this shot within this section.
 - `duration`: seconds this shot runs. **Valid range is 2 to 10, working range
-  4 to 10.** Each shot is rendered as its own independent clip with a hard
-  10-second ceiling, so `duration` is a real technical parameter, not just
+  3 to 8.** All the shots of one section render inside ONE H3 clip capped at 8
+  seconds, so `duration` is a real technical parameter, not just
   pacing notation. Never go below ~4s — LTX renders very short clips poorly
   and it wrecks pacing.
 
@@ -373,7 +373,7 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   APPROXIMATELY that number (within about a second is ideal; never wildly
   off). Do not pick a shot count because a beat "feels bigger" or "has three
   beats" — `targetShotCount` is the answer; compress or combine beats to fit
-  it (a 4-10 second shot comfortably holds two or three beats). The ONE
+  it (a 3-8 second shot comfortably holds two beats). The ONE
   exception is physical continuity, below.
 
   **NEVER emit a shot shorter than 2 seconds. The schema rejects it and the
@@ -384,9 +384,9 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
 
   Worked example, because this is the exact case that has failed a run:
   `budgetSec` 11.3 with `targetShotCount` 1. One shot cannot be 11.3s (the
-  maximum is 10). The WRONG answer is two shots of 10 + 1.3 — that 1.3 is below
+  maximum is 8). The WRONG answer is two shots of 8 + 3.3 — that 1.3 is below
   the minimum and the section is rejected outright, three attempts in a row,
-  killing the run. The RIGHT answer is **a single 10-second shot**: come in
+  killing the run. The RIGHT answer is **a single 8-second shot**: come in
   1.3s under budget and let it go. Being slightly under `budgetSec` is always
   acceptable; a sub-2-second shot never is.
 
@@ -395,12 +395,17 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   accept the shortfall.
 
   In practice: if `targetShotCount` is 1, that one shot's `duration` is
-  `budgetSec` itself (clamped into 4-10 if `budgetSec` falls outside that
-  range). If `targetShotCount` is 2 or 3, split `budgetSec` roughly evenly
-  across them (e.g. `budgetSec` 15 over 2 shots → two shots of about 7-8s
-  each), still clamped into 4-10 each. Example: `budgetSec: 9,
-  targetShotCount: 1` → one 9s shot. Example: `budgetSec: 17,
-  targetShotCount: 2` → two shots of about 8-9s each, summing to ~17.
+  `budgetSec` itself (clamped into 3-8 if `budgetSec` falls outside that range).
+  If `targetShotCount` is 2 or 3, split `budgetSec` roughly evenly across them,
+  still clamped into 3-8 each. The normal shape is `budgetSec: 8,
+  targetShotCount: 2` → two shots of about 4s, both inside the one 8-second
+  clip. Example: `budgetSec: 6, targetShotCount: 2` → two 3s shots. Example:
+  `budgetSec: 4, targetShotCount: 1` → one 4s shot.
+
+  Because a section IS one clip capped at 8s, the shots of a section should sum
+  to at most 8. If `budgetSec` exceeds 8 the renderer clamps the clip and the
+  tail of your shot list never appears — so prefer fewer, shorter shots over a
+  list that cannot fit.
 
   **Physical continuity outranks the budget.** If a continuous interaction
   (a fall and its catch, a hand-off, an impact) needs 10 seconds to play
@@ -444,7 +449,7 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   in this pipeline — the video model invents all the motion between the start
   and end of a shot from your `description` alone. A multi-stage physical
   action (a lunge, a catch, a fall, a scramble, an object arriving in a hand
-  mid-motion) needs 8-10 seconds AND a `description` that names its stages in
+  mid-motion) needs the full 8 seconds AND a `description` that names its stages in
   order. Crushing such a beat into 4 seconds is what makes motion melt: the
   model must compress several distinct body poses into too little time.
   A held look or a quiet reaction is fine at 6s, but describe what physically

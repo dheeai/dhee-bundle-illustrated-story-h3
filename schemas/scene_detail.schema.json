@@ -107,8 +107,8 @@
           "duration": {
             "type": "number",
             "minimum": 2,
-            "maximum": 10,
-            "description": "Seconds this shot runs, 2-10 (working range 4-10). Each shot is one independent Bernini clip with a hard 10s ceiling; the runner clamps to 10 and snaps to the model's 4n+1 frame grid at 24fps. Prefer fewer, longer shots — every boundary is a hard cut across which nothing carries. This section's own budgetSec/targetShotCount (on its scene_outline entry) determine how many shots and roughly how long each runs."
+            "maximum": 8,
+            "description": "Seconds this shot runs, 2 to 8 (working range 3-8). A shot is a CUT INSIDE its section's single H3 clip, and that clip is capped at 8s -- so no shot can exceed 8, and the shots of one section must sum to about its budgetSec (~8). This maximum was 10 while the clip cap was 8, which let a section plan a shot longer than the clip that had to contain it. Aim near the section's targetShotCount: two ~4s shots in an 8s section is the normal shape."
           },
           "description": {
             "type": "string",
