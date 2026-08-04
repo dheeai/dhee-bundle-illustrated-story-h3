@@ -1,29 +1,47 @@
 {
   "type": "object",
-  "required": ["sections"],
+  "required": [
+    "sections"
+  ],
   "additionalProperties": false,
   "properties": {
-    "title": { "type": "string", "description": "This chapter's own title. Optional here — the merged whole-film scene_outline.json carries the film title from the first chapter outline that supplies one, or a config fallback." },
+    "title": {
+      "type": "string",
+      "description": "This chapter's own title. Optional here — the merged whole-film scene_outline.json carries the film title from the first chapter outline that supplies one, or a config fallback."
+    },
     "sections": {
       "type": "array",
       "minItems": 1,
       "description": "Skeleton of THIS CHAPTER's ordered beats — one per eventual film section, numbered LOCALLY (scene_1, scene_2, … from 1, restarting each chapter). Order = this chapter's own screen order. Globally renumbered to scene_<N> across the whole film by the downstream plan.chapter_merge (mode:sections) node — there is NO maximum here; a chapter's own duration budget can legitimately call for many sections.",
       "items": {
         "type": "object",
-        "required": ["id", "heading", "mode", "brief", "emotion", "spokenLines"],
+        "required": [
+          "id",
+          "heading",
+          "mode",
+          "brief",
+          "emotion",
+          "spokenLines"
+        ],
         "additionalProperties": false,
         "properties": {
           "spokenLines": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "Every line spoken in THIS beat, copied VERBATIM from this chapter's screenplay above — same words, same punctuation, same language, one entry per utterance, in spoken order. Empty array for a 'narration' section (nobody speaks). This is the ONLY field that assigns a screenplay line to a section, and it exists because you are the one node that can: you hold THIS chapter's screenplay AND you are deciding where this chapter's section boundaries fall, so you alone know which lines land in which beat.\nWhy that matters: the downstream scene_detail pass is NOT given the screenplay any more. It authors each section's shots from its own outline entry alone, and takes its dialogue from THIS array. Previously it received the whole 73KB whole-film screenplay and had to re-find its own lines in a document with no section markers and headings that appear nowhere in it — at a boundary that search is genuinely ambiguous, so two adjacent sections would independently stage the same beat and quote the same line, and the finished film played it twice. Measured on hunt2 (134 sections): 13 lines duplicated across sections, including a whole 3-shot block appearing in both scene_13 and scene_14. Splitting a line between two beats, or leaving a spoken beat's array empty, reintroduces exactly that failure.\nAssign every line to EXACTLY ONE section. If a beat's boundary falls mid-conversation, put each line with the beat it is actually spoken in; never repeat a line in two sections to smooth continuity."
+            "items": {
+              "type": "string",
+              "pattern": "^[^:]*$"
+            },
+            "description": "Every line spoken in THIS beat — THE SPOKEN WORDS ONLY. Copy the words from inside the screenplay's quotation marks and NOTHING else: no speaker name, no colon, no quotation marks, no stage direction. The screenplay writes dialogue as 'Aditya: \"Sorry. Traffic.\"' — the correct entry is exactly: Sorry. Traffic. WHY THIS IS STRICT: this string is copied VERBATIM into an H3 <d>[Language] ... </d> tag and SPOKEN ALOUD by the video model. A measured run emitted all 25 lines as 'Aditya: \"Sorry. Traffic.\"' and H3 would have said the character's name and the word quote before every line. The speaker is identified separately, outside the tag, by the downstream pass. Keep the ORIGINAL LANGUAGE of the line AND write it in that language's NATIVE SCRIPT — a Hindi line stays in Hindi, in Devanagari (कोई बात नहीं।), NEVER romanized into Latin (Koi baat nahi.); likewise Kannada in ಕನ್ನಡ, Tamil in தமிழ், Bengali in বাংলা, Telugu in తెలుగు, Urdu in اردو. MEASURED: a seed-matched A/B found romanized Hindi mispronounces the tokens Latin cannot spell — 'padh' voiced with an English d instead of the retroflex ढ़, 'Delhi' anglicised — while the Devanagari original was correct throughout. If the screenplay handed you romanized Latin, transliterate it into the native script; that is the ONLY edit you may make to the words. Never translate to English. Empty array for a 'narration' section."
           },
           "id": {
             "type": "string",
             "pattern": "^scene_[0-9]+$",
             "description": "Sequential, LOCAL to this chapter: scene_1, scene_2 … MUST use this exact form (not 's01') — renumbered globally downstream, so number locally from 1 regardless of other chapters."
           },
-          "heading": { "type": "string", "description": "Section title (a few words)." },
+          "heading": {
+            "type": "string",
+            "description": "Section title (a few words)."
+          },
           "emotion": {
             "type": "string",
             "minLength": 3,
@@ -31,7 +49,10 @@
           },
           "mode": {
             "type": "string",
-            "enum": ["narration", "dialogue"],
+            "enum": [
+              "narration",
+              "dialogue"
+            ],
             "description": "'dialogue' iff a character SPEAKS in this beat — this chapter's own screenplay gives them a line, direct or faithfully-converted reported speech; otherwise 'narration'. Classify honestly from this chapter's own screenplay. Carried forward unchanged by the scene_detail pass."
           },
           "brief": {
@@ -41,7 +62,9 @@
           },
           "entities": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Bible ids (characters/locations/objects) VISIBLE across this section — used by the scene_detail pass to re-inject canonical looks. List EVERY character physically present, including anyone the speaker talks to."
           }
         }

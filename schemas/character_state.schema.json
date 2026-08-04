@@ -1,48 +1,119 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["shots"],
+  "required": [
+    "characters",
+    "locations"
+  ],
   "additionalProperties": false,
   "properties": {
-    "shots": {
+    "characters": {
       "type": "array",
-      "minItems": 1,
-      "description": "One entry per shot in scenes_plan.shots, in the SAME order. Every shot must appear, even with an empty characters[] array.",
+      "description": "One timeline per recurring character across the whole film.",
       "items": {
         "type": "object",
-        "required": ["shotId", "characters"],
+        "required": [
+          "id",
+          "states"
+        ],
         "additionalProperties": false,
         "properties": {
-          "shotId": {
+          "id": {
             "type": "string",
-            "pattern": "^scene_[0-9]+_shot_[0-9]+$",
-            "description": "MUST match a shots[].id from scenes_plan exactly."
+            "description": "story_bible id, verbatim."
           },
-          "characters": {
+          "states": {
             "type": "array",
-            "description": "Every anchored/recurring character physically present in this shot and their current appearance state as of this shot. Empty if no recurring character is present.",
+            "minItems": 1,
+            "description": "Whole-film appearance timeline in screen order. `from` ids are GLOBAL scene ids — plan.chapter_merge shifted each chapter-local id by the number of sections in preceding chapters. A state holds from its `from` scene until the next one; plan.character_states forward-fills it onto every shot.",
             "items": {
               "type": "object",
-              "required": ["id", "appearance", "signature", "changedThisShot"],
-              "additionalProperties": false,
+              "required": [
+                "signature",
+                "appearance",
+                "from",
+                "change"
+              ],
+              "additionalProperties": true,
               "properties": {
-                "id": {
-                  "type": "string",
-                  "description": "The story_bible character id."
+                "signature": {
+                  "type": "string"
                 },
                 "appearance": {
-                  "type": "string",
-                  "minLength": 10,
-                  "description": "FULL current wardrobe + props-held + condition (dirt/wet/wounds/hair) as of THIS shot — a complete, standalone description, not a diff against a prior shot."
+                  "type": "string"
                 },
+                "from": {
+                  "type": "string",
+                  "pattern": "^scene_[0-9]+$",
+                  "description": "GLOBAL scene id at which this state comes into force."
+                },
+                "change": {
+                  "type": "string"
+                },
+                "fromChapter": {
+                  "type": "string",
+                  "description": "Which chapter declared this state (added by the merge, for tracing)."
+                },
+                "fromLocal": {
+                  "type": "string",
+                  "description": "The chapter-local id before shifting (added by the merge, for tracing)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "description": "One timeline per location whose look changes. Usually empty.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "states"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "story_bible id, verbatim."
+          },
+          "states": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Whole-film appearance timeline in screen order. `from` ids are GLOBAL scene ids — plan.chapter_merge shifted each chapter-local id by the number of sections in preceding chapters. A state holds from its `from` scene until the next one; plan.character_states forward-fills it onto every shot.",
+            "items": {
+              "type": "object",
+              "required": [
+                "signature",
+                "appearance",
+                "from",
+                "change"
+              ],
+              "additionalProperties": true,
+              "properties": {
                 "signature": {
-                  "type": "string",
-                  "minLength": 3,
-                  "description": "Short, stable lowercase key for this exact appearance state, e.g. 'lara__jacket-off__torch'. Reused verbatim while unchanged; changes only when the appearance changes."
+                  "type": "string"
                 },
-                "changedThisShot": {
+                "appearance": {
+                  "type": "string"
+                },
+                "from": {
                   "type": "string",
-                  "description": "One short phrase naming the delta applied at this exact shot (e.g. 'sheds jacket'), or the literal string 'none' if this shot carries the character's prior state forward unchanged."
+                  "pattern": "^scene_[0-9]+$",
+                  "description": "GLOBAL scene id at which this state comes into force."
+                },
+                "change": {
+                  "type": "string"
+                },
+                "fromChapter": {
+                  "type": "string",
+                  "description": "Which chapter declared this state (added by the merge, for tracing)."
+                },
+                "fromLocal": {
+                  "type": "string",
+                  "description": "The chapter-local id before shifting (added by the merge, for tracing)."
                 }
               }
             }

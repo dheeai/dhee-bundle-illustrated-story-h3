@@ -3,8 +3,8 @@ narrated, animated film. A first pass already produced the film's outline
 skeleton (a title plus one short brief per section); a deterministic merge
 step then injected a duration BUDGET onto each section. Your job is to expand
 YOUR assigned section into full prose, a scene brief, and its shots — each
-shot being a CUT inside this section's single 8-second clip, which the video model
-renders in one pass.
+shot being a CUT inside this section's single clip (5 to 15.08 seconds), which the
+video model renders in one pass.
 
 Story bible (recurring visual identities, with ids):
 {{story_bible}}
@@ -145,8 +145,9 @@ length). See "Shots" below for exactly how to use `budgetSec`/`targetShotCount`.
 
 If, unusually, this section's outline entry has NEITHER field (this only
 happens if its chapter's own duration metadata was itself missing — an
-anomaly), fall back to pacing this section at roughly 10-16 seconds in 1-2
-shots, same as any other section.
+anomaly), fall back to pacing this section at 5 to 8 seconds in 1-2 shots,
+same as any other section — and size it off the words in `spokenLines`, at about
+2.8 words per second plus a second of lead-in and tail.
 
 Narrator voiceover enabled for this project: {{narration}}
 (Informational only, for continuity/tone — it does NOT change which shots
@@ -331,9 +332,10 @@ still.
 ## Shots — exactly `targetShotCount` ordered shots for THIS section
 Bring THIS section to life in exactly `targetShotCount` shots (see "This
 section's duration budget" above — read it from this section's own outline
-entry, do not guess), each a 3-8 second CUT summing to about
-`budgetSec`. `targetShotCount` is usually 1 or 2 — a section is roughly
-10-16 seconds of film, so 3 is already a busy section. Never pad with a shot
+entry, do not guess), each a 3-8 second CUT summing to
+`budgetSec`. `targetShotCount` is usually 1 or 2 — a section is between 5.17 and
+15.08 seconds of film and most are near 8, so 3 is already a busy section. A
+section that is ONE unbroken take may declare a single shot of up to 15.08s. Never pad with a shot
 that doesn't show something new; if `targetShotCount` gives you more room
 than this beat's own action needs, prefer fewer/longer shots over padding.
 
@@ -353,11 +355,23 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   `scene_3_shot_2`. This id is load-bearing — get the format exactly right.
 - `scene`: this section's number (int) — must match `<N>` above exactly.
 - `shotNumber`: 1-based position of this shot within this section.
-- `duration`: seconds this shot runs. **Valid range is 2 to 10, working range
-  3 to 8.** All the shots of one section render inside ONE H3 clip capped at 8
-  seconds, so `duration` is a real technical parameter, not just
-  pacing notation. Never go below ~4s — LTX renders very short clips poorly
-  and it wrecks pacing.
+- `duration`: seconds this shot runs. **Valid range is 2 to 10.8, working range
+  3 to 8.** All the shots of one section render inside ONE H3 clip, and **the
+  clip's length is the SUM of your shots' durations** — so `duration` is a real
+  technical parameter, not pacing notation. Never go below ~3s; very short cuts
+  render poorly and wreck pacing.
+
+  **The sum must LAND ON `budgetSec`, not merely stay under it.** `budgetSec` is
+  no longer an arbitrary target — it is COMPUTED from the actual words spoken in
+  this beat (measured at ~2.8 words/second plus lead-in and tail). So it is the
+  time the dialogue genuinely needs.
+
+  Undershooting it is not "safely conservative", it is the known failure: H3
+  stretches or compresses speech to fill whatever clip it is given, so a beat
+  whose words need 8s crammed into a 5s clip is delivered rushed or cut off
+  mid-word. Overshooting is also real but milder — it pads the front of the clip
+  with dead air (measured: a 5-word line in a 5.17s clip sat silent for 2.94s
+  before she spoke). Match it.
 
   **Prefer FEWER, LONGER shots.** Every shot boundary is a hard cut across
   which nothing carries — not blocking, not position, not the state of any
@@ -376,36 +390,28 @@ Emit every shot for THIS section — and ONLY this section — in the fragment's
   it (a 3-8 second shot comfortably holds two beats). The ONE
   exception is physical continuity, below.
 
-  **NEVER emit a shot shorter than 2 seconds. The schema rejects it and the
-  whole section fails.** This bites when `budgetSec` does not divide evenly into
-  the 2-10 range. If honouring `budgetSec` exactly would leave a remainder under
-  2 seconds, DO NOT emit that remainder as its own tiny shot — absorb it, or
-  drop it.
+  `budgetSec` is always one of H3's legal clip lengths, so it is always
+  reachable: **5.17, 5.88, 6.58, 7.29, 8.0, 8.71, 9.42, 10.13, 10.83.** You will
+  never be handed a number your shots cannot sum to. **10.83s is the hard
+  ceiling** — a single clip cannot be longer, whatever the beat wants.
 
-  Worked example, because this is the exact case that has failed a run:
-  `budgetSec` 11.3 with `targetShotCount` 1. One shot cannot be 11.3s (the
-  maximum is 8). The WRONG answer is two shots of 8 + 3.3 — that 1.3 is below
-  the minimum and the section is rejected outright, three attempts in a row,
-  killing the run. The RIGHT answer is **a single 8-second shot**: come in
-  1.3s under budget and let it go. Being slightly under `budgetSec` is always
-  acceptable; a sub-2-second shot never is.
+  In practice: if `targetShotCount` is 1, that one shot's `duration` IS
+  `budgetSec` — copy it across, do not round it into 3-8. If `targetShotCount`
+  is 2 or 3, split `budgetSec` across them so they SUM to it, keeping each above
+  the 2s minimum. Examples: `budgetSec: 5.17, targetShotCount: 1` → one 5.17s
+  shot. `budgetSec: 8.0, targetShotCount: 2` → 4.0 + 4.0. `budgetSec: 10.83,
+  targetShotCount: 2` → 5.4 + 5.43. `budgetSec: 6.58, targetShotCount: 2` →
+  3.3 + 3.28.
 
-  The rule in general: `budgetSec` is a target, the 2-10 range is a HARD limit,
-  and when they conflict the range wins. Round down to whole shots that fit and
-  accept the shortfall.
+  **NEVER emit a shot shorter than 2 seconds — the schema rejects it and the
+  whole section fails.** If splitting `budgetSec` across `targetShotCount` shots
+  would leave any shot under 2s, emit FEWER shots and give the time to the ones
+  you keep. Fewer, longer shots is the right resolution; a sub-2s shot is never
+  acceptable, and neither is dropping time off the total.
 
-  In practice: if `targetShotCount` is 1, that one shot's `duration` is
-  `budgetSec` itself (clamped into 3-8 if `budgetSec` falls outside that range).
-  If `targetShotCount` is 2 or 3, split `budgetSec` roughly evenly across them,
-  still clamped into 3-8 each. The normal shape is `budgetSec: 8,
-  targetShotCount: 2` → two shots of about 4s, both inside the one 8-second
-  clip. Example: `budgetSec: 6, targetShotCount: 2` → two 3s shots. Example:
-  `budgetSec: 4, targetShotCount: 1` → one 4s shot.
-
-  Because a section IS one clip capped at 8s, the shots of a section should sum
-  to at most 8. If `budgetSec` exceeds 8 the renderer clamps the clip and the
-  tail of your shot list never appears — so prefer fewer, shorter shots over a
-  list that cannot fit.
+  If a section carries `speechOverflowSec`, its dialogue genuinely does not fit
+  in one clip even at 10.83s. Still author to 10.83 — the beat needs re-planning
+  upstream and that is not your job to paper over.
 
   **Physical continuity outranks the budget.** If a continuous interaction
   (a fall and its catch, a hand-off, an impact) needs 10 seconds to play

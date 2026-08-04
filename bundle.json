@@ -1,7 +1,10 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.8.1",
+  "version": "0.13.0",
   "license": "MIT",
+  "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.", "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
+  "_comment_v0_11_0": "Clip duration is now DERIVED FROM THE DIALOGUE instead of dividing a chapter's seconds evenly across however many sections a model happened to author. MEASURED across 7 H3 renders (720p, seed 4242, Hindi, 2026-08-04): H3 generates audio from the prompt and STRETCHES OR COMPRESSES the spoken line to fill the clip -- leadInSilence + speechSpan == clipLength, every time, in all 7. Both failure modes follow from that one behaviour: a 5-word line in a 5.17s clip padded with 2.94s of DEAD AIR before she spoke, and a 9-word line in the same 5.17s clip ran to the final frame with zero tail (rushed/truncated). So clip length must MATCH the dialogue, not merely exceed it -- over-allocating is a defect too, which is why the old even division was wrong in BOTH directions regardless of section count, and why capping section count would only have picked a different accident. Natural pace measured off the longest (least padding-distorted) line: ~2.8 words/sec, plus ~1.0s fixed lead-in+tail, plus 0.35s between separate utterances. Capacity per legal grid point: 124f/5.17s ~12 words, 192f/8.0s ~20 words, 243f/10.13s ~27 words. FOUNDER POLICY (2026-08-04): short beats stay their OWN sections and the dead-air pad is ACCEPTED, preserving deliberate dramatic silences -- so the budget is only ever raised to max(evenShare, speechNeed), NEVER shrunk and NEVER merged. Implemented in plan.chapter_merge (budgetSec = snapToH3Grid(max(evenShare, speechSecondsFor(spokenLines)))) so scene_detail authors correct per-shot durations AND correct [Shot N] At MM:SS timecodes, and enforced again as a render-time FLOOR in comfy.minimax_h3_r2v's resolveSeconds so an LLM-authored duration can never squeeze the words. A beat needing more than the ceiling gets speechOverflowSec + a loud warning: it needs an upstream re-plan, not a bigger clip. ALSO in this version: the <d> dialogue tag must sit as EARLY in its shot as possible. Measured on one line and seed -- moving the tag to the front cut lead-in silence 1.33s -> 0.40s, while INSTRUCTING H3 that 'her voice begins on the very first frame' changed it by exactly 0.00s and deleting the pre-speech action changed it by -0.30s (worse). H3 renders the ORDER the prose is written in; an assertion about timing is just more prose. Position is the lever, not wording.",
+  "_comment_v0_10_0": "Non-English dialogue must be authored in its language's NATIVE SCRIPT, never romanized into Latin. MEASURED via a seed-matched A/B render (1280x720, 124f, seed 4242, identical graph): the Hindi line 'Aap kya padh rahi hain? Mujhe Delhi jaana hai.' was voiced with English phonetics on exactly the tokens Latin cannot spell -- 'padh' got an English d instead of the retroflex dh, 'Delhi' came out anglicised -- while the identical line as 'आप क्या पढ़ रही हैं? मुझे दिल्ली जाना है।' was pronounced correctly throughout. H3 reads text phonetically off the script it is written in, and romanized Hindi is full of tokens that are also English-shaped (hai, main, koi, Delhi, data). The convention is enforced in FOUR places: chapter_screenplay.md (where dialogue is born, and the last cheap place to fix the script), chapter_outline.md + chapter_outline.schema.json (spokenLines, copied verbatim downstream), and scene_video_prompt.md (whose shipped <d>[Hindi] example was itself romanized -- examples teach harder than rules, so that example WAS the bug). Backed structurally by auditDialogueScript() in dhee-runner-minimax-h3, which fails a render whose <d>[Language] tag names a non-Latin-script language but whose words contain none of that script; the test is 'at least one native character', so a Hindi line embedding Latin proper nouns stays legal.",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
   "summary": "Turns a story of ANY LENGTH into a directed film with native synced stereo audio. Identical planning to illustrated_story_msr -- any-length chapter split, per-chapter bible/screenplay/outline with previousN carry-forward, canonical anchor plates for every recurring character, story-critical object and location, and a character STATE ledger with per-state edited plates -- but the film is no longer assembled from one-shot clips. Each SECTION is rendered as ONE MiniMax H3 (Hailuo 03) reference-to-video generation of up to 15 seconds containing SEVERAL CUTS, directed by a timecoded shot list, with the camera moves, the transitions between cuts and the whole sound design authored in the same prompt. Up to 9 reference plates per scene, each given an explicit job.",
   "techLine": "ANY-LENGTH CHAPTER SPLIT · PER-CHAPTER SCREENPLAY/BIBLE/OUTLINE (previousN carry-forward) · DETERMINISTIC MERGE · CHARACTER/OBJECT/LOCATION ANCHOR PLATES · CHARACTER STATE LEDGER · PER-STATE EDITED PLATES · MINIMAX H3 MULTI-CUT REFERENCE-TO-VIDEO SCENES (up to 15s, native stereo AV, 9 refs) · FINAL CUT",
@@ -24,7 +27,7 @@
       "ffmpeg.concat": ">=0.1.0",
       "plan.assemble_keyframes": ">=0.4.0",
       "comfy.minimax_h3_r2v": ">=0.2.0",
-      "comfy.rtx_vsr": ">=0.1.0"
+      "comfy.ltx_upscale": ">=0.1.0"
     },
     "runnerPackages": {
       "plan.story_prepare": "dhee-runner-story-chapters",
@@ -42,7 +45,7 @@
       "comfy.ltx_msr": "dhee-runner-ltx-reference",
       "plan.assemble_keyframes": "dhee-runner-plan-keyframes",
       "comfy.minimax_h3_r2v": "dhee-runner-minimax-h3",
-      "comfy.rtx_vsr": "dhee-runner-rtx-vsr"
+      "comfy.ltx_upscale": "dhee-runner-ltx-upscale"
     }
   },
   "reviewLoopMax": 2,
@@ -155,7 +158,7 @@
           "label": "Off — ship at the render resolution"
         }
       ],
-      "placeholder": "NVIDIA RTX Video Super Resolution runs on the finished clips, so you can render cheap and finish sharp: a 12.25s 480p scene reached 1080p in ~12s. It is deterministic and fast but NOT generative -- it sharpens detail that survived the render rather than inventing it, so it cannot rebuild a face that was mush at 480p. Presets scale the SHORT edge and preserve aspect. 'off' passes clips straight through."
+      "placeholder": "LTX 2.3 generative upscale runs on the finished clips, so you can render cheap and finish sharp. Unlike the RTX VSR pass it replaced, it is GENERATIVE -- it rebuilds detail the cheap render lost rather than only sharpening what survived, so a face that was soft at 480p can come back. That costs time: ~45s for a 5s clip to 1080p and ~180s for a 10s one, against ~12s for the whole clip under VSR. It conditions the refine on the clip's own audio so lip sync does not drift on dialogue. Presets scale the SHORT edge and preserve aspect; the output is x2 whatever gets encoded so a preset is APPROXIMATE. 'off' passes clips straight through."
     },
     {
       "id": "protagonist_photo",
@@ -289,7 +292,8 @@
         "config": {
           "promptTemplate": "prompts/art_style.md",
           "tier": "heavy",
-          "outputFormat": "markdown"
+          "outputFormat": "markdown",
+          "maxTokens": 20000
         }
       },
       "displayCapability": "style.world"
@@ -333,7 +337,7 @@
           "outputSchema": "schemas/chapter_bible.schema.json",
           "tier": "heavy",
           "outputFormat": "json",
-          "maxTokens": 8000,
+          "maxTokens": 20000,
           "structuredMode": "schema",
           "concurrency": 1
         }
@@ -397,7 +401,8 @@
         "config": {
           "promptTemplate": "prompts/character_anchor_prompt.md",
           "tier": "heavy",
-          "outputFormat": "json"
+          "outputFormat": "json",
+          "maxTokens": 20000
         }
       },
       "displayCapability": "character.prompt",
@@ -460,7 +465,8 @@
         "config": {
           "promptTemplate": "prompts/object_anchor_prompt.md",
           "tier": "heavy",
-          "outputFormat": "json"
+          "outputFormat": "json",
+          "maxTokens": 20000
         }
       },
       "displayCapability": "object.prompt",
@@ -523,7 +529,8 @@
         "config": {
           "promptTemplate": "prompts/location_anchor_prompt.md",
           "tier": "heavy",
-          "outputFormat": "json"
+          "outputFormat": "json",
+          "maxTokens": 20000
         }
       },
       "displayCapability": "setting.prompt",
@@ -607,7 +614,7 @@
           "outputFormat": "markdown",
           "tier": "heavy",
           "temperature": 0.6,
-          "maxTokens": 8000,
+          "maxTokens": 20000,
           "concurrency": 1
         }
       },
@@ -680,7 +687,7 @@
           "outputSchema": "schemas/chapter_outline.schema.json",
           "tier": "heavy",
           "outputFormat": "json",
-          "maxTokens": 6000,
+          "maxTokens": 20000,
           "concurrency": 2,
           "structuredMode": "schema"
         }
@@ -714,15 +721,16 @@
           "partsInput": "chapter_outline",
           "chaptersInput": "chapters",
           "outputSchema": "schemas/scene_outline.schema.json",
-          "_comment": "v0.8.0: plan.chapter_merge (mode:sections) >=0.3.0 now ALSO injects a deterministic per-section budgetSec/targetShotCount — that section's own chapter's durationSec split evenly across however many sections that chapter's chapter_outline pass actually produced. This is the fix for a real regression: films were coming out 2-4x their target length (lamp_keeper_msr 108s vs a 54s target, lamp_keeper_v2 364s vs a 95s target) because the LLM-authored pacing guidance in prompts/chapter_outline.md (sections ≈ durationSec ÷ 15) and prompts/scene_detail.md's own duration arithmetic were both prose the model did not reliably follow. Doing the division here — deterministically, after the section count is already fixed — makes the film's TOTAL duration correct BY CONSTRUCTION regardless of how many sections the outline pass created. This is a PROPORTIONAL BUDGET, never a cap — it scales without limit with durationSec and section count. Do NOT delete this under the belief it re-introduces a section-count ceiling; it does not. See prompts/scene_detail.md (consumes budgetSec/targetShotCount directly) and plan.assemble_keyframes' chaptersInput tripwire (scenes_plan node below) which verifies the fix held.",
-          "secondsPerShot": 4,
+          "maxClipSec": 15.09,
+          "_comment_maxClipSec": "v0.13.0: 15.09, mirroring scene_clip.maxSeconds 15 so the budget a section is authored against equals the clip length actually rendered -- otherwise the [Shot N] At MM:SS.mmm cut times land out of sync with the finished clip. Why 15.09 and not 15.08: resolveClipCeilingSec snaps a configured value DOWN to a legal grid point, and 15.08*24 = 361.92 would fall to 345f (14.375s), surrendering 0.71s. 15.09*24 = 362.16 snaps down to 362f = 15.083s, which is what scene_clip renders (the h3 runner snaps UP, so maxSeconds 15 -> 360f -> 362f). CORRECTS TWO CLAIMS in the v0.12.0 version of this comment. (a) It said \"H3's absolute maximum is 10.83s (260f)\" -- wrong; the node tooltip gives the trained range as ~124-362 frames, i.e. up to 15.08s, and 362f has been rendered successfully. (b) It said \"226f+ costs ~3.5x marginal\", citing a cost cliff that is now RETRACTED: re-measured with fixed steps, 192f->226f came out 306->491s where the original sweep read 288->573s, and the box shows 10-21% run-to-run variance on byte-identical configs, so the \"cliff\" was noise. Real cost (720p, 20 steps, nvfp4_full, paired): 124f 141s, 226f 334s, 362f ~645s with EasyCache -- roughly frames^1.4, smooth, no discontinuity. A 15s take costs ~1.7x per second of video versus a 5.17s one, which is a premium worth paying for a scene that wants an unbroken take rather than a reason to cap. See dhee-cofounder/memory/2026-08-04-h3-cost-scales-as-frames-1-42.md and artifacts/h3-r2v-probe/README.md.", "_comment": "v0.8.0: plan.chapter_merge (mode:sections) >=0.3.0 now ALSO injects a deterministic per-section budgetSec/targetShotCount — that section's own chapter's durationSec split evenly across however many sections that chapter's chapter_outline pass actually produced. This is the fix for a real regression: films were coming out 2-4x their target length (lamp_keeper_msr 108s vs a 54s target, lamp_keeper_v2 364s vs a 95s target) because the LLM-authored pacing guidance in prompts/chapter_outline.md (sections ≈ durationSec ÷ 15) and prompts/scene_detail.md's own duration arithmetic were both prose the model did not reliably follow. Doing the division here — deterministically, after the section count is already fixed — makes the film's TOTAL duration correct BY CONSTRUCTION regardless of how many sections the outline pass created. This is a PROPORTIONAL BUDGET, never a cap — it scales without limit with durationSec and section count. Do NOT delete this under the belief it re-introduces a section-count ceiling; it does not. See prompts/scene_detail.md (consumes budgetSec/targetShotCount directly) and plan.assemble_keyframes' chaptersInput tripwire (scenes_plan node below) which verifies the fix held.",
+          "secondsPerShot": 5,
           "_comment_pacing_derives_from_clip_cap": "v0.8.1: secondsPerShot 8 (the default) -> 4, so that ONE number governs pacing everywhere. A SECTION is exactly one H3 clip and scene_clip caps a clip at 8s (measured: H3's marginal cost jumps ~3.5x between 8.00s and 9.42s). chapter_outline therefore splits at durationSec/8, budgetSec lands ~8, and targetShotCount = round(8/4) = 2 shots of ~4s as CUTS INSIDE that one clip. Previously the outline split at durationSec/15 while the clip capped at 8, so every section was budgeted ~15s and silently lost ~47% of its beats to the clamp -- a 35-section film came out 4m34s against a 6m34s plan. It also created an UNSATISFIABLE DEAD ZONE: with secondsPerShot 8, any budgetSec in (10,12] gave targetShotCount 1 while a shot's schema maximum was 10, so no valid output existed and the run died after three attempts (issue #2). With secondsPerShot 4 and a shot maximum of 8 the dead zone is gone for every budgetSec >= 2."
         }
       },
       "displayCapability": "scene.outline"
     },
     {
-      "id": "scene_detail",
+      "id": "scene_detail [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
       "displayName": "Scene Detail (section + shots, per scene)",
       "kind": "collection",
       "itemSource": "scene_outline",
@@ -762,7 +770,7 @@
           "outputSchema": "schemas/scene_detail.schema.json",
           "tier": "heavy",
           "outputFormat": "json",
-          "maxTokens": 6000,
+          "maxTokens": 20000,
           "concurrency": 4,
           "structuredMode": "schema",
           "_comment_spokenlines_one_shot": "v0.5.2 fixes a bug INTRODUCED by v0.5.0's own prompt. The spokenLines instruction read 'One entry per shot, in order', which the model read as 'every shot gets an entry'. With ONE line and TWO shots it put the SAME line on both, so the finished film would speak it twice in a row -- trading the old cross-SECTION duplication for a new within-SECTION one. Measured on unseeing_role (35 sections): 6 repeated dialogue values, and 5 of the 6 were a single line duplicated across two shots of the SAME section (scene_13/23/28/5/2), caught at the plan checkpoint before any clip rendered. The prompt now states that each entry appears in EXACTLY ONE shot, that shots outnumbering lines are WORDLESS (no dialogue, no speaker), and that shot count and line count are independent -- extra shots are not slots to fill. A terminal check asks the model to list its own dialogue values and delete any line appearing twice. Note what the same run proved about v0.5.0 itself: of 21 lines across 35 sections and 2 chapters, only two were assigned to more than one section -- 'Ira Kulkarni.' (13 chars) and 'Thank you.' (10 chars), both genuinely repeated in the source story -- while every substantive line (255, 78, 64, 45, 27 chars) had exactly one owner. hunt2 pre-fix had 13 duplicated lines including 90+ char speeches. Cross-section leakage is fixed; this was a separate, self-inflicted regression on top of it.",
@@ -859,9 +867,10 @@
           "outputFormat": "json",
           "temperature": 0.2,
           "structuredMode": "schema",
-          "maxTokens": 12000,
+          "maxTokens": 20000,
           "concurrency": 1,
-          "_comment_timeline_inversion": "v0.8.0 INVERTS this node. It used to consume chapter_shots and emit an exhaustive PER-SHOT ledger -- one row per shot restating every present character's full appearance. That made states DERIVED FROM shots, so a shot could never have been authored against a known state, and the schema's own demand ('every shot must appear') is documented as unenforceable in dhee-runner-story-chapters/shotBrief.ts: 'found unenforceable across three consecutive runs', with a skipped shot silently falling back to its base anchor. On a 326-shot film that is hundreds of near-identical rows and one omission corrupts a clip. It now reads the SCREENPLAY (where changes of clothes actually happen) plus the OUTLINE (for the scene ids to anchor to) and emits an ordered TIMELINE per character: {signature, appearance, from:'scene_12', change}. plan.character_states forward-fills that onto every shot deterministically, so the model writes ~2-4 rows per character instead of ~326 and the per-shot assignment is arithmetic. Locations use the identical shape for genuine look changes (day->night, a wrecked room). chapter_shots is DELETED -- chapter_state was its only consumer. The materiality bar (only CLOTHING or PHYSIQUE mints a new signature) is preserved verbatim; it is hard-won -- a real run minted 12 states where 4 were material."
+          "_comment_timeline_inversion": "v0.8.0 INVERTS this node. It used to consume chapter_shots and emit an exhaustive PER-SHOT ledger -- one row per shot restating every present character's full appearance. That made states DERIVED FROM shots, so a shot could never have been authored against a known state, and the schema's own demand ('every shot must appear') is documented as unenforceable in dhee-runner-story-chapters/shotBrief.ts: 'found unenforceable across three consecutive runs', with a skipped shot silently falling back to its base anchor. On a 326-shot film that is hundreds of near-identical rows and one omission corrupts a clip. It now reads the SCREENPLAY (where changes of clothes actually happen) plus the OUTLINE (for the scene ids to anchor to) and emits an ordered TIMELINE per character: {signature, appearance, from:'scene_12', change}. plan.character_states forward-fills that onto every shot deterministically, so the model writes ~2-4 rows per character instead of ~326 and the per-shot assignment is arithmetic. Locations use the identical shape for genuine look changes (day->night, a wrecked room). chapter_shots is DELETED -- chapter_state was its only consumer. The materiality bar (only CLOTHING or PHYSIQUE mints a new signature) is preserved verbatim; it is hard-won -- a real run minted 12 states where 4 were material.",
+          "_comment_maxtokens_20k": "v0.8.3: maxTokens=20000 on EVERY llm.generate node. Three nodes (the *_anchor_prompt trio) had NO maxTokens at all, and on a reasoning model that is unbounded thinking: measured on deepseek-v4-flash-0731 they cost 348s + 178s + 23s = 549s of a 1580s authoring phase (35%) to produce three short text prompts. chapter_state itself took 302s at maxTokens 12000. An explicit ceiling everywhere makes the cost bounded and the failure mode visible (a truncation error) rather than a silent multi-minute stall. Note the ceiling matters much less on LOCAL models, where dhee-core's chat_template_kwargs.enable_thinking:false actually takes effect -- it is a no-op on OpenRouter, which is why the remote run was so slow."
         }
       },
       "displayCapability": "character.state"
@@ -873,6 +882,11 @@
       "inputs": [
         {
           "from": "chapter_state",
+          "usage": "aggregate",
+          "scope": "all"
+        },
+        {
+          "from": "chapter_outline",
           "usage": "aggregate",
           "scope": "all"
         },
@@ -892,7 +906,9 @@
           "outputPath": "plans/character_state.json",
           "partsInput": "chapter_state",
           "chaptersInput": "chapters",
-          "outputSchema": "schemas/character_state.schema.json"
+          "outputSchema": "schemas/character_state.schema.json",
+          "sectionsPartsInput": "chapter_outline",
+          "_comment_timeline_merge": "v0.8.2 BUGFIX. v0.8.0 changed chapter_state to emit a TIMELINE (characters[]/locations[]) but left this merge still concatenating the old shots[] array, so it produced 0 shots and died on '/shots must NOT have fewer than 1 items' -- the producer's shape was changed without following the pipe. mode:'states' now selects by the ledger's SHAPE and merges timelines when it sees characters[]/locations[]. sectionsPartsInput is REQUIRED for correctness, not convenience: chapter_outline numbers sections CHAPTER-LOCALLY (scene_1..scene_N restarting each chapter) while mergeSections renumbers them globally, so a timeline's from:'scene_9' means the 9th section OF THAT CHAPTER. The merge needs each chapter's section count to shift it to the global id. Without it every `from` after chapter 1 points at the wrong scene -- invisible on a single-chapter film and silently wrong on every longer one, which is exactly the class of mistake this rework exists to remove."
         }
       },
       "displayCapability": "character.state"
@@ -962,7 +978,7 @@
           "structuredMode": "schema",
           "temperature": 0.3,
           "concurrency": 4,
-          "maxTokens": 6000
+          "maxTokens": 20000
         }
       },
       "displayCapability": "character.prompt",
@@ -1202,10 +1218,10 @@
           "outputFormat": "json",
           "concurrency": 5,
           "structuredMode": "schema",
-          "maxTokens": 6000,
+          "maxTokens": 20000,
           "_comment_own_shots_only": "v0.5.3: this node leaks NEIGHBOURS' DIALOGUE, a separate instance of the duplication bug from the scene_detail one fixed in v0.5.0. It receives the WHOLE scenes_plan (every section's shots) and must take only the shots prefixed with its own section id. Measured on unseeing_role (35 sections, qwen-35b): 13 lines appeared in the RENDERED detailedDescription prose of more than one scene -- a 78-char line staged in FOUR scenes (9/19/20/21), a 45-char line in two -- so the finished film would have spoken them repeatedly. Caught before any clip rendered. Crucially this is NOT the underdetermined case scene_detail had: every shot in the plan is explicitly tagged with its owning section (scene_20_shot_1), so the correct answer is unambiguous and the model was simply not filtering. The prompt now states the `<section id>_shot_` prefix as the exact and only test, names the measured 4-scene failure, and adds terminal check 0b: list every <d> and delete any line that is not in your own shots. Also fixes spokenLines being authored WITH the markup ('<d>[English] Thank you.</d>' instead of 'Thank you.'). Model note: scene authoring moved from g4-meromero-192k to qwen-35b for this run because g4 collapsed into a repetition loop on two sections -- it appended a subject_definitions block (which the RUNNER writes) and ran 'and <Subject 4> and <Subject 5>...' out to <Subject 695> until maxTokens 6000 truncated it mid-string, failing all 3 attempts and killing the run. scene_video_prompt.md now caps subject numbers at the reference count and forbids appending definitions.",
           "_comment_concurrency": "concurrency 2 -> 5 (v0.5.4), from a measured breakdown of the 34s-per-scene authoring cost on qwen-35b. The box is NOT slow: free generation measured 200-300 tok/s warm and prefill of the 15,219-token scenes_plan ran at ~5,073 tok/s (3s). Thinking is already disabled by dhee-core (LLMClient.ts sends chat_template_kwargs.enable_thinking=false). So of 34s per scene, ~3s is prefill and free-decoding ~1,400 output tokens would be ~6s -- the remaining ~25s is GBNF grammar-constrained decoding, an effective ~47 tok/s against 250 free, i.e. a ~5x penalty. llama.cpp evaluates the grammar stack per token on the CPU, so the GPU sits largely idle through it and extra concurrent slots are close to free. Two things drive the token count and therefore the penalty: detailedDescription.minLength 1940 (forces ~500 words, deliberately, per the MiniMax H3 guide's 350-500 range) and the nested references/enum schema. Lowering minLength would cut wall-clock proportionally but costs prompt quality, so raise parallelism first. Cautionary note on measuring this: a first attempt reported 3.6 tok/s and blamed VRAM contention -- it was rotating FOUR different models in one loop, so every call paid a ~27s cold model load (qwen-35b measured). Always warm the model and hold it fixed before timing anything on this gateway.",
-          "_comment_duration_one_number": "v0.5.5 collapses THREE independent duration numbers into one. They were: scene_video_prompt.schema.json duration maximum 15, the scene_clip runner's maxSeconds 8, and chapter_outline's `sections = durationSec/15` pacing divisor. That mismatch cost a schema-validation retry on roughly one prompt in eight and then KILLED a 35-section run when scene_27 failed '/duration must be <= 15' three times. The schema maximum is now 8 and both the prompt header ('up to 8 seconds here') and step 4 ('clamped to 5-8 seconds - 8 is the hard ceiling, not 15') agree with it. After the change scene_27 authored on the first attempt. The pacing divisor is still 15 and still disagrees -- see issue #2; sections therefore get budgeted ~11s and each scene prompt clamps down to 8, dropping its least essential beat by design rather than by accident.",
+          "_comment_duration_one_number": "v0.5.5 collapses THREE independent duration numbers into one. They were: scene_video_prompt.schema.json duration maximum 15, the scene_clip runner's maxSeconds 8, and chapter_outline's `sections = durationSec/15` pacing divisor. That mismatch cost a schema-validation retry on roughly one prompt in eight and then KILLED a 35-section run when scene_27 failed '/duration must be <= 15' three times. The schema maximum is now 8 and both the prompt header ('up to 8 seconds here') and step 4 ('clamped to 5-8 seconds - 8 is the hard ceiling, not 15') agree with it. After the change scene_27 authored on the first attempt. The pacing divisor is still 15 and still disagrees -- see issue #2; sections therefore get budgeted ~11s and each scene prompt clamps down to 8, dropping its least essential beat by design rather than by accident. [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
           "_comment_audio_speech_without_words": "v0.6.0 fixes GARBLED AUDIO, confirmed by controlled A/B. Cause: prose that describes SPEAKING while supplying no words. H3 builds its audio track from this text, so telling it a woman speaks with a trembling voice and giving it no <d> line makes it synthesise a voice saying nothing -- voice-shaped noise that sounds like a corrupted file. It is silent at authoring time: the JSON validates and the render succeeds. Measured on unseeing_role scene_9, which asserted speech THREE times ('She speaks with a measured, trembling breath, her voice carrying the weight...', 'as she delivers her lines', 'The sound of her voice cracks slightly with emotion') with spokenLines:[] and zero <d> tags. Re-rendering the same scene at the same seed/geometry/model/steps with the line supplied produced clean intelligible speech. Four render-side hypotheses were falsified first and all failed IDENTICALLY because they rendered the same text: declared-timeline mismatch (dead -- scene_9's timeline fits 8s), narration/no-dialogue (dead -- scene_5 has a line and is also garbled), EasyCache (dead -- ON and OFF equally garbled), and resolution (dead -- 832x480 and 1280x720 equally garbled). Incidental finding from that A/B: EasyCache saves only 4s per clip at 480p (81s vs 85s), so it is near-worthless here and carries quality risk for nothing -- the 720p measurement that justified it does not transfer. THE FIX: the template now states that prose may describe speech ONLY when the words appear in a <d> tag; an empty spokenLines means nobody speaks and the prose must use breath/movement/stillness instead; background voices (a crowd, photographers, a name called) must either get a line or be described non-vocally; overallSoundscape carries NO voice at all, not even abstractly, since the official guide reserves it for non-verbal sound; and a speaker's vocal identity (age, register, pace, accent) goes OUTSIDE the tag on first appearance. Terminal check 0a asks the model to find every speech verb and confirm each has words attached. NOTE the repair script artifacts/h3-prompt-compliance/strip_borrowed_dialogue.mjs CREATED this defect on scene_9 by deleting a borrowed <d> and leaving the speech prose; it now detects and reports the condition instead of shipping it silently."
         }
       },
@@ -1294,7 +1310,7 @@
           "shotPlanInput": "scenes_plan",
           "seconds": 12,
           "minSeconds": 5,
-          "maxSeconds": 8,
+          "maxSeconds": 15,
           "fps": 24,
           "resolutionInput": "resolution",
           "width": 1344,
@@ -1318,7 +1334,7 @@
           "easyCacheThreshold": 0.3,
           "easyCacheStart": 0.2,
           "easyCacheEnd": 0.9,
-          "_comment_duration_cap": "maxSeconds 15 -> 8 (v0.5.1), from a measured duration sweep at 1280x720, 20 steps, 2 refs on the production graph (artifacts/h3-r2v-probe/duration_sweep.mjs). H3 snaps length to a 17k+5 frame grid, so only five lengths exist between 5s and 8s: 124/141/158/175/192 frames. Measured wall-clock: 124f=128s, 141f=210s, 158f=250s, 175f=292s, 192f=288s, 226f=573s. Marginal cost is ~41s per +17 frames from 141f through 192f and then jumps to ~142s per step at 226f -- a 3.5x cliff between 8.00s and 9.42s. 8.00s (192f) is therefore the last length before cost stops being linear, and it is also CHEAPER in absolute wall-clock than 175f/7.29s (288s vs 292s), so 141f/158f/175f are all strictly dominated: they cost more per second of finished video than 192f while delivering less of it. Cheapest per second of output is 124f/5.17s at 24.8s of compute per second of video, vs 36.0 for 192f -- but that rests on a single 128s measurement whose repeat-control never ran, so treat the size of that advantage as unconfirmed. Both cheap points (124, 192) are the only sweep lengths divisible by 4, consistent with a temporal-VAE stride-4 alignment effect -- a HYPOTHESIS from two points, not a result. Ideally the runner would snap only to 124f or 192f rather than any grid point <=8s; capping is the cheap approximation of that.",
+          "_comment_duration_cap": "v0.9.0: CLIP_CAP raised 8 -> 10s at the founder's request, and propagated to every place that encodes it (chapter_outline divisor, secondsPerShot 5, scene_detail shot max, scene_video_prompt duration max). COST WARNING, measured: a duration sweep at 720p found H3's marginal cost jumps ~3.5x between 8.00s (192 frames, 288s) and 9.42s (226 frames, 573s). 10s snaps to 243 frames (10.13s), which is PAST that knee, so a clip costs roughly 2x an 8s one before Spectrum's ~28% forecasting saving. 8.00s remains the cheapest point per second of finished video; 10s is a deliberate quality/pacing choice, not an efficiency one. [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
           "pinnedRefs": [
             {
               "input": "protagonist_photo",
@@ -1340,7 +1356,7 @@
     },
     {
       "id": "scene_upscaled",
-      "displayName": "Scene Upscale (NVIDIA RTX Video Super Resolution)",
+      "displayName": "Scene Upscale (LTX 2.3 generative upscale)",
       "kind": "collection",
       "itemSource": "scenes_plan",
       "itemKey": "sections",
@@ -1360,17 +1376,18 @@
         "pattern": "assets/videos/scenes_upscaled/{{item_id}}.mp4"
       },
       "runner": {
-        "tool": "comfy.rtx_vsr",
+        "tool": "comfy.ltx_upscale",
         "config": {
-          "_comment": "Upscale pass between the render and the final cut, so the film can be rendered CHEAP and finished SHARP. Measured: H3 cost scales as ~pixels^1.3 (a 5s clip is 55s at 832x480 vs 205s at native 1344x768), while RTX VSR took a real 12.25s 480p scene to 1080p in ~12s -- so 480p render + VSR is roughly 4x cheaper end to end than paying for pixels at generation time. RTX VSR is NOT generative though: it sharpens what survived the render and will not rebuild a face that was mush at 480p, which is why `resolution` and `upscale` are SEPARATE project fields rather than one setting. Set upscale 'off' and the runner copies each clip through untouched, so the graph still runs end to end with no rewiring.",
+          "_comment": "Upscale pass between the render and the final cut, so the film can be rendered CHEAP and finished SHARP. Measured: H3 cost scales as ~pixels^1.3 (a 5s clip is 55s at 832x480 vs 205s at native 1344x768), so rendering small and upscaling after is far cheaper than paying for pixels at generation time. v0.12.0 SWAPPED comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04). RTX VSR is deterministic and fast (~12s for a 12.25s 480p scene) but NOT generative: it sharpens detail that survived the render and cannot rebuild a face that was mush at 480p -- which was the ceiling on this bundle's whole cheap-render strategy. LTX 2.3's x2 spatial latent upsampler plus a three-step distilled refine IS generative, so it can rebuild what a cheap render lost, at ~45s for a 5s clip to 1080p and ~180s for a 10s one. The two share the same target contract (off / 720p / 1080p / 1440p / 4k / <w>x<h>) so this is a same-node swap with no rewiring and no change to the `upscale` project field. Set upscale 'off' and clips still copy through untouched.",
           "outputPath": "assets/videos/scenes_upscaled/{{item_id}}.mp4",
-          "workflowPath": "workflows/rtx_vsr_video.json",
           "endpoint": "self.local",
           "videoInput": "scene_clip",
           "upscaleInput": "upscale",
           "target": "1080p",
-          "quality": "ULTRA",
-          "timeoutMinutes": 20
+          "conditionOnAudio": true,
+          "timeoutMinutes": 45,
+          "_comment_audio": "conditionOnAudio TRUE is load-bearing for this bundle, not a default worth leaving implicit: every clip here carries H3-generated SPEECH, and the runner encodes the source's own audio into the AV latent so the generative refine cannot re-time mouths. With it off, lip sync drifts on any talking clip. timeoutMinutes raised 20 -> 45 because LTX upscaling is generative and ~15x slower than VSR per clip (~180s for a 10s clip, before queue wait), and the old 20 was sized for VSR.",
+          "_comment_no_workflow": "Unlike comfy.rtx_vsr there is NO workflowPath: dhee-runner-ltx-upscale BUILDS its Comfy graph in code, because the topology is a function of the config (conditioning on real audio vs silence changes the wiring, and an exact-size target adds a post-decode resize). workflows/rtx_vsr_video.json is now unused by this bundle -- left on disk so reverting the swap needs only this node changed back."
         }
       },
       "displayCapability": "shot.video"

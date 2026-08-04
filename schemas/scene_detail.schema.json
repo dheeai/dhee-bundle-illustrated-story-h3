@@ -107,8 +107,8 @@
           "duration": {
             "type": "number",
             "minimum": 2,
-            "maximum": 8,
-            "description": "Seconds this shot runs, 2 to 8 (working range 3-8). A shot is a CUT INSIDE its section's single H3 clip, and that clip is capped at 8s -- so no shot can exceed 8, and the shots of one section must sum to about its budgetSec (~8). This maximum was 10 while the clip cap was 8, which let a section plan a shot longer than the clip that had to contain it. Aim near the section's targetShotCount: two ~4s shots in an 8s section is the normal shape."
+            "maximum": 15.08,
+            "description": "Seconds this shot runs, 2 to 15.08 (working range 3-8). A shot is a CUT INSIDE its section's single H3 clip, and the shots of one section must sum to about its budgetSec. The 15.08s maximum exists so a section that is ONE unbroken take can declare one shot of full length -- it is NOT a target. Normal shots are 3-8s; a section is usually 1-2 of them. Longer clips cost more per second of finished video (27.3s of render per second at 5.17s against 42.8s at 15.08s), and crucially the section's own duration is set from its DIALOGUE, so length the words cannot fill becomes dead air rather than headroom."
           },
           "description": {
             "type": "string",

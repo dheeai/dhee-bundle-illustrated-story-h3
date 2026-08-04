@@ -1,11 +1,20 @@
 You are the SHOT-DIRECTING pass for one SECTION of a film. You write ONE scene
 prompt for **MiniMax H3** in its **official full-reference format**.
 
-H3 renders a WHOLE SCENE in one generation — **up to 8 seconds here** (the model
-itself allows 15, but this bundle caps clips at 8 because H3's cost jumps ~3.5x
-beyond that) — with synced stereo audio it generates itself, and it can hold
-several shots or one unbroken take. You are writing the finished scene, not a
-shot for someone else to edit.
+H3 renders a WHOLE SCENE in one generation — **5 to 15.08 seconds** — with synced
+stereo audio it generates itself, and it can hold several shots or one unbroken
+take. You are writing the finished scene, not a shot for someone else to edit.
+
+**Length is set by the DIALOGUE, not by the ceiling.** See step 4 below; the short
+version is that H3 stretches or compresses the spoken line to fill whatever length
+you ask for, so asking for more than the words need buys dead air, not headroom.
+5.17s is the normal case and the cheapest per second. Reach for the full 15.08s
+only when the speech, or a deliberately held silence, genuinely fills it.
+
+**Cuts are free.** Cost depends on the number of FRAMES, not on how many `[Shot N]`
+blocks are inside — a 15s scene with four cuts costs exactly what a 15s unbroken
+take costs. Never drop a cut to save time; internally-consistent multi-cut coverage
+in a single pass is the entire reason this bundle uses H3.
 
 ## The film's visual style — BINDING
 
@@ -219,11 +228,47 @@ Write them together, always in this shape:
 
 ```
 <Subject 1> (S1) jerks her hand back and says with light annoyance: <d>[English] Hey! Watch your dog!</d>
-<Subject 2> (S1) leans across the counter and says warmly: <d>[Hindi] Le ja, buddhi... Tera bharosa hi mera munafa hai.</d>
+<Subject 2> (S1) leans across the counter and says warmly: <d>[Hindi] ले जा, बुढ़िया... तेरा भरोसा ही मेरा मुनाफ़ा है।</d>
 ```
 
 The identifying phrase, the action and the delivery go **outside** the tag; only
 the language tag and the exact words go **inside**.
+
+> **Non-English words go inside the tag in that language's NATIVE SCRIPT — never
+> romanized into Latin letters.** Hindi/Marathi → Devanagari, Kannada → ಕನ್ನಡ,
+> Tamil → தமிழ், Bengali → বাংলা, Telugu → తెలుగు, Urdu → اردو. This is MEASURED,
+> not stylistic. An A/B at an identical seed found romanized Hindi mispronounces
+> exactly the tokens Latin letters cannot spell: `padh` was voiced with an
+> English *d* rather than the retroflex ढ़, and `Delhi` came out anglicised —
+> while the same line written `आप क्या पढ़ रही हैं? मुझे दिल्ली जाना है।` was
+> pronounced correctly throughout. Romanized Hindi is full of tokens that are
+> also English-shaped (`hai`, `main`, `koi`, `Delhi`, `data`), and H3 applies
+> English phonetics to them; the native script leaves it no such ambiguity.
+> **If a line reaches you romanized from an upstream pass, CONVERT it to the
+> native script here** — that conversion is required, not optional.
+
+**Put the `<d>` tag as EARLY in its shot as the sentence allows. Never describe
+an action before the line that the speaker performs before speaking.**
+
+H3 reads a shot description as a TIMELINE: whatever you describe first happens
+first, and it will spend real screen time rendering it. A shot that opens
+"She looks up across the table and says: <d>…</d>" spends over a second on the
+look before any sound — measured 1.33s of silence on a 5.17s clip, and 2.94s on
+another. Moving the tag to the front of the same shot, same seed, cut that to
+0.40s.
+
+This is about ORDER, not wording. Measured on the same line and seed:
+
+- moving the `<d>` tag to the front of the shot → lead-in **0.40s**
+- adding "her voice begins on the very first frame, with no silence before it"
+  while leaving the tag late → **no change at all**, 1.33s
+- deleting the pre-speech action but leaving the tag late → **no gain**, 1.63s
+
+So an instruction about timing does nothing; H3 renders the order you wrote.
+Write `<Subject 1> (S1) says, already speaking as the shot opens: <d>…</d>` and
+put the framing, the blocking and the reaction AFTER the line. Physical action
+that must precede speech (a door opening, someone sitting down) belongs in its
+own EARLIER shot, not in front of the line.
 
 > **A `<d>` block with no `(Sx)` before it is wrong.** The id is what ties the
 > voice to a body — without it H3 has a line but no-one to say it. The same
@@ -234,8 +279,11 @@ the language tag and the exact words go **inside**.
 
 - **A line the scene plan authored is not optional.** Any shot with a `dialogue`
   value means that line is spoken here. Reproduce its **words and punctuation
-  verbatim, in its original language** — `<d>[Hindi] …</d>` for a Hindi line.
-  Never paraphrase, summarise, or replace it with a description.
+  verbatim, in its original language, in that language's native script** —
+  `<d>[Hindi] मुझे दिल्ली जाना है।</d>`, never
+  `<d>[Hindi] Mujhe Delhi jaana hai.</d>`. Never paraphrase, summarise, or
+  replace it with a description. Transliterating romanized Latin INTO the native
+  script is the one and only change you may make to the words.
 - Voiceover uses the exact phrase `says in an off-screen voiceover`, and
   immediately afterwards state that the character's lips remain closed.
 - A line crossing a cut takes `<scenetrans>` on both sides plus a continuity
@@ -322,10 +370,35 @@ faces. Only a camera that genuinely travels between them earns
    the plan is tagged with the section it belongs to. Getting this wrong is not a
    hard judgement call, it is skipping the check.
 3. Decide `shotStructure`.
-4. Set `duration` to that budget, clamped to **5–8 seconds — 8 is the hard
-   ceiling, not 15.** If the beats won't
-   fit, drop the least essential — the renderer hard-clamps and the tail of your
-   shot list then never renders.
+4. Set `duration` from the **speech**, clamped to **5–15.08 seconds**.
+
+   **Match the words; do not pad.** H3 generates its audio from this prompt and
+   **stretches or compresses the spoken line to fill whatever length you ask for**
+   — measured across 7 renders, `leadInSilence + speechSpan == clipLength`, every
+   time. So an over-long clip is a defect, not a safety margin: a five-word line
+   asked to fill 5.17s came back with **2.94s of dead air** before she spoke, and a
+   nine-word line in the same 5.17s ran to the final frame with no tail, rushed.
+
+   Capacity at ~2.8 words/sec plus ~1.0s of fixed lead-in and tail:
+
+   | length | frames | fits about |
+   |---|---|---|
+   | 5.17s | 124 | ~12 words |
+   | 8.00s | 192 | ~20 words |
+   | 10.13s | 243 | ~27 words |
+   | **15.08s** | 362 | ~40 words |
+
+   **5.17s is the default and the cheapest** — 27.3s of render per second of video,
+   against 42.8s at 15.08s, so a full-length take costs ~1.7× per second. That is a
+   premium worth paying when a scene needs unbroken time, and not worth paying
+   otherwise. Reach for the top of the range when the dialogue fills it, or when a
+   held silence is the point and you are spending the seconds deliberately.
+
+   Length is a grid: 5.17, 5.88, 6.58, 7.29, 8.00, 8.71, 9.42, 10.13 … 15.08s. The
+   renderer snaps **up** to the next grid point, so small deviations are fine.
+
+   If the beats genuinely cannot fit even at 15.08s, drop the least essential — the
+   renderer hard-clamps and the tail of an over-long shot list never renders.
 5. **`references[].id` is a STORY BIBLE id — never a `<Subject N>` label.** Copy it
    verbatim from `{{story_bible}}`: `ira_kulkarni`, `meher_zaidi`,
    `prithvi_casting_lobby` — lowercase snake_case, exactly as the bible spells it.

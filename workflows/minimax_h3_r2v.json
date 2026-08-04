@@ -1,20 +1,212 @@
 {
-  "_comment": "MiniMax H3 ref2va, PRUNED nvfp4 weights + EasyCache. Replaces the pruned_int8_convrot / beta graph as of 2026-08-03 (founder call), adapted verbatim from his own ComfyUI export. Three things changed at once and NONE of them is covered by the calibration table in dhee-cofounder/artifacts/h3-r2v-probe/README.md (which measured int8 + beta): the UNET is now pruned_nvfp4 (founder call 2026-08-03: the pruned nvfp4 build, not the full one -- pruned is the smaller/faster of the two nvfp4 variants on the box, mirroring how the int8 graph used pruned_int8_convrot rather than the unpruned int8), an EasyCache node wraps the model (reuse_threshold 0.3, active 20%-90% of the schedule) and the scheduler is bong_tangent. EasyCache trades fidelity for speed by reusing steps, so if identity or motion degrades against a previously-good render, EasyCache is the first thing to bisect -- raise reuse_threshold toward 0 or delete the CACHE node and point GUIDER/SIGMAS back at UNET. NOTE the runner OVERRIDES BasicScheduler.scheduler from cfg.scheduler, so bong_tangent only takes effect because the bundle node sets it; changing it here alone does nothing. Calibration also showed scheduler choice is free (beta 7.74 vs simple 7.65 s/it) and that cost scales as ~pixels^1.3, so resolution -- not the scheduler -- is the cost dial.",
-  "UNET": { "class_type": "UNETLoader", "inputs": { "unet_name": "minimax_h3_ref2va_pruned_nvfp4.safetensors", "weight_dtype": "default" } },
-  "CACHE": { "class_type": "EasyCache", "inputs": { "reuse_threshold": 0.3, "start_percent": 0.2, "end_percent": 0.9, "verbose": false, "model": ["UNET", 0] } },
-  "CLIP": { "class_type": "CLIPLoader", "inputs": { "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "type": "minimax", "device": "default" } },
-  "VVAE": { "class_type": "VAELoader", "inputs": { "vae_name": "minimax_h3_video_vae_fp16.safetensors" } },
-  "AVAE": { "class_type": "VAELoader", "inputs": { "vae_name": "minimax_h3_audio_vae_fp32.safetensors" } },
-  "PROMPT": { "class_type": "PrimitiveStringMultiline", "inputs": { "value": "__POS__" } },
-  "h3Ref0": { "class_type": "LoadImage", "inputs": { "image": "example.png" } },
-  "R2V": { "class_type": "MiniMaxH3ReferenceToVideo", "inputs": { "prompt": ["PROMPT", 0], "width": 1344, "height": 768, "length": 362, "ref_image_size": "match", "clip": ["CLIP", 0], "vae": ["VVAE", 0], "audio_vae": ["AVAE", 0], "ref_images.ref_image_0": ["h3Ref0", 0] } },
-  "NOISE": { "class_type": "RandomNoise", "inputs": { "noise_seed": 42 } },
-  "GUIDER": { "class_type": "BasicGuider", "inputs": { "model": ["CACHE", 0], "conditioning": ["R2V", 0] } },
-  "SAMPLER": { "class_type": "KSamplerSelect", "inputs": { "sampler_name": "res_multistep" } },
-  "SIGMAS": { "class_type": "BasicScheduler", "inputs": { "scheduler": "bong_tangent", "steps": 20, "denoise": 1, "model": ["CACHE", 0] } },
-  "SAMP": { "class_type": "SamplerCustomAdvanced", "inputs": { "noise": ["NOISE", 0], "guider": ["GUIDER", 0], "sampler": ["SAMPLER", 0], "sigmas": ["SIGMAS", 0], "latent_image": ["R2V", 1] } },
-  "VDEC": { "class_type": "VAEDecode", "inputs": { "samples": ["SAMP", 0], "vae": ["VVAE", 0] } },
-  "ADEC": { "class_type": "VAEDecodeAudio", "inputs": { "samples": ["SAMP", 0], "vae": ["AVAE", 0] } },
-  "CV": { "class_type": "CreateVideo", "inputs": { "fps": 24, "bit_depth": 8, "images": ["VDEC", 0], "audio": ["ADEC", 0] } },
-  "SV": { "class_type": "SaveVideo", "inputs": { "filename_prefix": "h3_scene", "format": "auto", "codec": "auto", "video": ["CV", 0] } }
+  "_comment": "MiniMax H3 reference-to-video. Spectrum step forecasting REPLACES EasyCache in the model chain (UNETLoader -> SpectrumApplyMiniMaxH3 -> BasicGuider/BasicScheduler, the same slot EasyCache and SolAttn occupy). Spectrum (xmarre/ComfyUI-Spectrum-MiniMax-H3) fits a Chebyshev ridge model to post-transformer hidden features and FORECASTS them on selected solver steps instead of running the full transformer, so it removes expensive evaluations rather than making them faster. Measured on this box: 20 steps -> 14 actual + 6 forecast (30% fewer transformer calls, zero fallbacks), actual steps ~39.8s vs forecast ~3.2s, ~28% sampling-loop speedup, and the schedule held under busy action motion as well as calm content. It only forecasts for res_multistep / sample_euler / res_multistep_cfg_pp samplers and silently stays fully native for others -- this graph uses res_multistep, so it engages. Settings are the README's conservative preset with debug OFF (debug only adds console logging). EasyCache was REMOVED: measured at 480p it saved just 4s per clip (81s vs 85s) while being the pass most likely to erode fine identity detail, so it was carrying quality risk for almost nothing. The runner's easyCache* config keys are now inert here -- it looks for an EasyCache node and finds none. Everything else is unchanged: pruned nvfp4 UNET, res_multistep sampler, bong_tangent scheduler (the runner overwrites BasicScheduler.scheduler from cfg, so scene_clip must keep setting it), 20 steps.",
+  "UNET": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_nvfp4_full.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "SPEC": {
+    "class_type": "SpectrumApplyMiniMaxH3",
+    "_meta": {
+      "title": "Spectrum step forecasting (replaces EasyCache)"
+    },
+    "inputs": {
+      "model": [
+        "UNET",
+        0
+      ],
+      "enabled": true,
+      "blend_weight": 0.5,
+      "degree": 4,
+      "ridge_lambda": 0.1,
+      "window_size": 2.0,
+      "flex_window": 0.75,
+      "warmup_steps": 5,
+      "tail_actual_steps": 1,
+      "max_history": 8,
+      "debug": false
+    }
+  },
+  "CLIP": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "VVAE": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "AVAE": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "PROMPT": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "__POS__"
+    }
+  },
+  "h3Ref0": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    }
+  },
+  "R2V": {
+    "class_type": "MiniMaxH3ReferenceToVideo",
+    "inputs": {
+      "prompt": [
+        "PROMPT",
+        0
+      ],
+      "width": 1344,
+      "height": 768,
+      "length": 362,
+      "ref_image_size": "match",
+      "clip": [
+        "CLIP",
+        0
+      ],
+      "vae": [
+        "VVAE",
+        0
+      ],
+      "audio_vae": [
+        "AVAE",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "h3Ref0",
+        0
+      ]
+    }
+  },
+  "NOISE": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "GUIDER": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "SPEC",
+        0
+      ],
+      "conditioning": [
+        "R2V",
+        0
+      ]
+    }
+  },
+  "SAMPLER": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "SIGMAS": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "scheduler": "bong_tangent",
+      "steps": 20,
+      "denoise": 1,
+      "model": [
+        "SPEC",
+        0
+      ]
+    }
+  },
+  "SAMP": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "NOISE",
+        0
+      ],
+      "guider": [
+        "GUIDER",
+        0
+      ],
+      "sampler": [
+        "SAMPLER",
+        0
+      ],
+      "sigmas": [
+        "SIGMAS",
+        0
+      ],
+      "latent_image": [
+        "R2V",
+        1
+      ]
+    }
+  },
+  "VDEC": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "SAMP",
+        0
+      ],
+      "vae": [
+        "VVAE",
+        0
+      ]
+    }
+  },
+  "ADEC": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": [
+        "SAMP",
+        0
+      ],
+      "vae": [
+        "AVAE",
+        0
+      ]
+    }
+  },
+  "CV": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "images": [
+        "VDEC",
+        0
+      ],
+      "audio": [
+        "ADEC",
+        0
+      ]
+    }
+  },
+  "SV": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "filename_prefix": "h3_scene",
+      "format": "mp4",
+      "codec": "h264",
+      "video": [
+        "CV",
+        0
+      ],
+      "codec.encoding": "re-encode",
+      "codec.encoding.crf": 15.0
+    }
+  },
+  "_comment_encode": "SaveVideo encode is EXPLICIT, not 'auto'. With codec:auto ComfyUI's defaults produced 3.5-4.4 Mbps h264 at 720p24, which visibly blocks on fast motion -- measured on a rain/neon rooftop chase where nearly every pixel changes every frame, the worst case for a low bitrate. codec is a nested COMFY_DYNAMICCOMBO_V3: the selected key goes on the input and its own fields arrive as DOTTED sub-keys, nesting one level deeper for `encoding` (codec=h264, codec.encoding=re-encode, codec.encoding.crf=15). CRF 15 against a default of 23 (lower is better, range 0-51). This is a genuine quality gain rather than a re-encode of existing damage: CreateVideo hands SaveVideo RAW FRAMES, so this is the FIRST encode -- 'encoding: auto' only passes a stream through when one already exists, which is not the case downstream of a VAEDecode.",
+  "_comment_unet": "v0.13.0: nvfp4_FULL, not pruned_nvfp4. Measured paired within one run at 1280x720 / 20 steps: 141s vs 169s at 124f and 334s vs 407s at 226f, so full is ~17-18% FASTER as well as being the better weights. An earlier note recommended pruned to relieve memory pressure; that pressure does not exist -- in-flight VRAM is pinned at ~31.6 of 32 GiB at every clip length, and ComfyUI already keeps the 14,956 MB text encoder on CPU (`current: cpu` in its log). Staged unet sizes: pruned_nvfp4 11,944 MB, nvfp4_full 17,876 MB, int8_convrot 19,995 MB."
 }

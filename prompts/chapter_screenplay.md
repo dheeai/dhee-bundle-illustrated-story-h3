@@ -94,7 +94,17 @@ For every scene/beat in THIS chapter, in play order, write:
 - The setting: where, when, the light.
 - What happens: the actual physical action and blocking — verb-first, concrete,
   never a static description of someone standing and feeling something.
-- Dialogue, if any: the actual line(s), attributed to who says them.
+- Dialogue, if any: the actual line(s), attributed to who says them. **Write
+  every non-English line in that language's NATIVE SCRIPT, even when the source
+  story romanized it into Latin letters.** Hindi/Marathi → Devanagari, Kannada →
+  ಕನ್ನಡ, Tamil → தமிழ், Bengali → বাংলা, Telugu → తెలుగు, Urdu → اردو. So a story
+  that wrote `"Koi baat nahi."` becomes `"कोई बात नहीं।"` here. This is the LAST
+  pass that can fix the script cheaply — every stage after this one copies your
+  words verbatim into the tag the video model speaks aloud, and romanized Latin
+  measurably mispronounces (a seed-matched A/B voiced `padh` with an English *d*
+  instead of the retroflex ढ़, and anglicised `Delhi`; the Devanagari original was
+  correct throughout). Keep the LANGUAGE the story chose — never translate a
+  Hindi line into English — and change only the script it is written in.
 - Mood: the one feeling this beat should leave the audience with.
 - Any STATE CHANGE this beat causes — name it explicitly. Write "no state
   change" if none occurs.

@@ -42,22 +42,37 @@ the audience feel here?" — never from "where does this happen?"
 
 Split THIS chapter into ordered SECTIONS that each cover ONE beat/moment.
 
-**A SECTION IS EXACTLY ONE H3 CLIP, and a clip is at most 8 seconds.** That single
-fact sets everything: `sections ≈ durationSec ÷ 8`. Compute this chapter's own
-number from its own `durationSec` — round to the nearest whole number, with a floor
-of 1 (a very short chapter is legitimately a single section).
+**A SECTION IS EXACTLY ONE H3 CLIP.** Pace at `sections ≈ durationSec ÷ 8`. Compute
+this chapter's own number from its own `durationSec` — round to the nearest whole
+number, with a floor of 1 (a very short chapter is legitimately a single section).
 
 The shots inside a section are CUTS WITHIN that one clip, not separate clips — so a
-section is typically ONE or TWO shots of about 4 seconds, both inside the same 8
-seconds. Never think of a section as 15 seconds; nothing downstream can render that.
+section is typically ONE or TWO shots of about 4 seconds, both inside the same clip.
 
-> **Why 8 and not 15:** a measured duration sweep found H3's marginal cost jumps
-> ~3.5x between 8.00s (192 frames) and 9.42s (226 frames), so the renderer caps every
-> clip at 8s. An earlier version of this guidance split at `durationSec ÷ 15`, which
-> budgeted each section ~15s while the renderer could only produce 8 — every section
-> silently lost about 47% of its planned beats, and a 35-section film came out 4m34s
-> against a 6m34s plan. The divisor and the cap are now the same number, so a section
-> budget is a promise the renderer can keep.
+> **Why 8 is the pacing target when the renderer allows 15.08s.** The two numbers do
+> different jobs. 8s is the *default* section length, because a scene's downstream
+> `duration` is set from its DIALOGUE and most beats do not have 15 seconds of speech
+> in them — asking for length the words cannot fill produces dead air, not headroom
+> (measured: a five-word line stretched to 5.17s came back with 2.94s of silence
+> before she spoke). 15.08s is the *ceiling*, available to a section whose speech or
+> deliberately held silence genuinely fills it. Budget at 8, and the ones that need
+> more will take it.
+>
+> Efficiency agrees: 5.17s costs 27.3s of render per second of finished video against
+> 42.8s at 15.08s, so short clips are cheaper per second. But the premium for a long
+> take is only ~1.7×, which is affordable — do not distort a scene to dodge it.
+>
+> **CORRECTED:** this note used to say the renderer capped clips at 8s because
+> "marginal cost jumps ~3.5x between 8.00s and 9.42s." That cliff is RETRACTED — it
+> was measurement noise on a box with 10-21% run-to-run variance (re-measured with
+> fixed steps, 192f→226f came out 306→491s where the original sweep read 288→573s).
+> Real cost is a smooth ~frames^1.4. The ceiling is now 15.08s (362 frames, the top
+> of H3's trained range), so **never** budget a section above that — but nothing
+> downstream loses beats at 8s either, since the divisor sits comfortably under the
+> ceiling. An even earlier version split at `durationSec ÷ 15` while the renderer
+> could only produce 8s, so every section silently lost ~47% of its beats and a
+> 35-section film came out 4m34s against a 6m34s plan. That failure mode is what the
+> divisor-under-ceiling rule prevents.
 
 **There is NO maximum section count.** This chapter's own `durationSec` is
 already the film's actual, un-capped length for this chapter (derived from the
@@ -68,7 +83,7 @@ compute the number from `durationSec` and use it. The only place compression
 applies is WITHIN that computed section count: if this chapter's own material
 has more distinct beats than sections, combine adjacent beats into one section's
 shots (a 4-second shot holds two beats comfortably) — never invent
-extra sections beyond what `durationSec ÷ 8` gives you, and never silently drop
+extra sections beyond what `durationSec ÷ 10` gives you, and never silently drop
 a beat instead of folding it in.
 
 **This is PACING GUIDANCE for how you split — it is not what makes the film's
@@ -78,7 +93,7 @@ a deterministic downstream step (`plan.chapter_merge`, mode `sections`) divides
 THIS chapter's own `durationSec` evenly across however many sections you
 create and hands each one an exact `budgetSec`/`targetShotCount` — so the
 film's total duration comes out correct BY CONSTRUCTION regardless of whether
-you hit `durationSec ÷ 8` exactly. Do not read a later duration overshoot as
+you hit `durationSec ÷ 10` exactly. Do not read a later duration overshoot as
 evidence this guidance should be tightened into a hard cap — the fix for that
 lives downstream, deterministically, not here. (This note exists because an
 earlier version of this guidance was once deleted entirely, in the mistaken
@@ -132,9 +147,25 @@ Every section must give:
   section, so the next pass knows whose canonical look to re-inject — list
   EVERY character physically present in the beat, including anyone the speaker
   talks to.
-- `spokenLines`: every line spoken in THIS beat, copied VERBATIM from the
-  screenplay above — same words, same punctuation, same language, one array
-  entry per utterance, in spoken order. `[]` for a `narration` section.
+- `spokenLines`: every line spoken in THIS beat — **the spoken WORDS ONLY**, one
+  array entry per utterance, in spoken order. `[]` for a `narration` section.
+
+  The screenplay writes dialogue as `Aditya: "Sorry. Traffic."`. The correct
+  entry is **`Sorry. Traffic.`** — no speaker name, no colon, no quotation marks.
+  This string is spoken aloud verbatim by the video model, so a name left in
+  front means it SAYS the name. A measured run emitted all 25 lines as
+  `Aditya: "..."` and every one would have been voiced that way.
+
+  **Keep the line's original language AND its native script.** A Hindi line
+  stays in Hindi, in Devanagari — `कोई बात नहीं।`, never `Koi baat nahi.`. Same
+  for Kannada (ಕನ್ನಡ), Tamil (தமிழ்), Bengali (বাংলা), Telugu (తెలుగు), Urdu (اردو).
+  The screenplay should already have written it that way; if it slipped and
+  handed you romanized Latin, TRANSLITERATE it into the native script — that is
+  the only edit you may make to the words. Romanized Latin measurably
+  mispronounces (a seed-matched A/B voiced `padh` with an English *d* rather
+  than the retroflex ढ़, and anglicised `Delhi`; the Devanagari original was
+  correct throughout). Never translate a line into English, and never invent an
+  English line where the screenplay has Hindi.
 
 ## `spokenLines` — you are the only pass that can do this, so do it carefully
 
