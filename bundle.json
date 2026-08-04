@@ -1,8 +1,9 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "license": "MIT",
-  "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.", "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
+  "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
+  "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
   "_comment_v0_11_0": "Clip duration is now DERIVED FROM THE DIALOGUE instead of dividing a chapter's seconds evenly across however many sections a model happened to author. MEASURED across 7 H3 renders (720p, seed 4242, Hindi, 2026-08-04): H3 generates audio from the prompt and STRETCHES OR COMPRESSES the spoken line to fill the clip -- leadInSilence + speechSpan == clipLength, every time, in all 7. Both failure modes follow from that one behaviour: a 5-word line in a 5.17s clip padded with 2.94s of DEAD AIR before she spoke, and a 9-word line in the same 5.17s clip ran to the final frame with zero tail (rushed/truncated). So clip length must MATCH the dialogue, not merely exceed it -- over-allocating is a defect too, which is why the old even division was wrong in BOTH directions regardless of section count, and why capping section count would only have picked a different accident. Natural pace measured off the longest (least padding-distorted) line: ~2.8 words/sec, plus ~1.0s fixed lead-in+tail, plus 0.35s between separate utterances. Capacity per legal grid point: 124f/5.17s ~12 words, 192f/8.0s ~20 words, 243f/10.13s ~27 words. FOUNDER POLICY (2026-08-04): short beats stay their OWN sections and the dead-air pad is ACCEPTED, preserving deliberate dramatic silences -- so the budget is only ever raised to max(evenShare, speechNeed), NEVER shrunk and NEVER merged. Implemented in plan.chapter_merge (budgetSec = snapToH3Grid(max(evenShare, speechSecondsFor(spokenLines)))) so scene_detail authors correct per-shot durations AND correct [Shot N] At MM:SS timecodes, and enforced again as a render-time FLOOR in comfy.minimax_h3_r2v's resolveSeconds so an LLM-authored duration can never squeeze the words. A beat needing more than the ceiling gets speechOverflowSec + a loud warning: it needs an upstream re-plan, not a bigger clip. ALSO in this version: the <d> dialogue tag must sit as EARLY in its shot as possible. Measured on one line and seed -- moving the tag to the front cut lead-in silence 1.33s -> 0.40s, while INSTRUCTING H3 that 'her voice begins on the very first frame' changed it by exactly 0.00s and deleting the pre-speech action changed it by -0.30s (worse). H3 renders the ORDER the prose is written in; an assertion about timing is just more prose. Position is the lever, not wording.",
   "_comment_v0_10_0": "Non-English dialogue must be authored in its language's NATIVE SCRIPT, never romanized into Latin. MEASURED via a seed-matched A/B render (1280x720, 124f, seed 4242, identical graph): the Hindi line 'Aap kya padh rahi hain? Mujhe Delhi jaana hai.' was voiced with English phonetics on exactly the tokens Latin cannot spell -- 'padh' got an English d instead of the retroflex dh, 'Delhi' came out anglicised -- while the identical line as 'आप क्या पढ़ रही हैं? मुझे दिल्ली जाना है।' was pronounced correctly throughout. H3 reads text phonetically off the script it is written in, and romanized Hindi is full of tokens that are also English-shaped (hai, main, koi, Delhi, data). The convention is enforced in FOUR places: chapter_screenplay.md (where dialogue is born, and the last cheap place to fix the script), chapter_outline.md + chapter_outline.schema.json (spokenLines, copied verbatim downstream), and scene_video_prompt.md (whose shipped <d>[Hindi] example was itself romanized -- examples teach harder than rules, so that example WAS the bug). Backed structurally by auditDialogueScript() in dhee-runner-minimax-h3, which fails a render whose <d>[Language] tag names a non-Latin-script language but whose words contain none of that script; the test is 'at least one native character', so a Hindi line embedding Latin proper nouns stays legal.",
   "displayName": "Illustrated Story · MiniMax H3 Film (any-length chapters, multi-cut scenes, stateful characters)",
@@ -132,33 +133,6 @@
         }
       ],
       "placeholder": "'native' (1344x768) is H3's own geometry and the best quality. Cost scales as ~pixels^1.3, so '480p' (832x480) renders ~3.7x faster -- use it to iterate on a story, then re-render the final cut at native. Accepts an explicit '<w>x<h>' too."
-    },
-    {
-      "id": "upscale",
-      "kind": "project",
-      "field": "upscale",
-      "default": "1080p",
-      "label": "Upscale pass (after render, before the final cut)",
-      "control": "select",
-      "options": [
-        {
-          "value": "1080p",
-          "label": "1080p — RTX VSR upscale (recommended)"
-        },
-        {
-          "value": "720p",
-          "label": "720p — RTX VSR upscale"
-        },
-        {
-          "value": "1440p",
-          "label": "1440p — RTX VSR upscale"
-        },
-        {
-          "value": "off",
-          "label": "Off — ship at the render resolution"
-        }
-      ],
-      "placeholder": "LTX 2.3 generative upscale runs on the finished clips, so you can render cheap and finish sharp. Unlike the RTX VSR pass it replaced, it is GENERATIVE -- it rebuilds detail the cheap render lost rather than only sharpening what survived, so a face that was soft at 480p can come back. That costs time: ~45s for a 5s clip to 1080p and ~180s for a 10s one, against ~12s for the whole clip under VSR. It conditions the refine on the clip's own audio so lip sync does not drift on dialogue. Presets scale the SHORT edge and preserve aspect; the output is x2 whatever gets encoded so a preset is APPROXIMATE. 'off' passes clips straight through."
     },
     {
       "id": "protagonist_photo",
@@ -722,15 +696,16 @@
           "chaptersInput": "chapters",
           "outputSchema": "schemas/scene_outline.schema.json",
           "maxClipSec": 15.09,
-          "_comment_maxClipSec": "v0.13.0: 15.09, mirroring scene_clip.maxSeconds 15 so the budget a section is authored against equals the clip length actually rendered -- otherwise the [Shot N] At MM:SS.mmm cut times land out of sync with the finished clip. Why 15.09 and not 15.08: resolveClipCeilingSec snaps a configured value DOWN to a legal grid point, and 15.08*24 = 361.92 would fall to 345f (14.375s), surrendering 0.71s. 15.09*24 = 362.16 snaps down to 362f = 15.083s, which is what scene_clip renders (the h3 runner snaps UP, so maxSeconds 15 -> 360f -> 362f). CORRECTS TWO CLAIMS in the v0.12.0 version of this comment. (a) It said \"H3's absolute maximum is 10.83s (260f)\" -- wrong; the node tooltip gives the trained range as ~124-362 frames, i.e. up to 15.08s, and 362f has been rendered successfully. (b) It said \"226f+ costs ~3.5x marginal\", citing a cost cliff that is now RETRACTED: re-measured with fixed steps, 192f->226f came out 306->491s where the original sweep read 288->573s, and the box shows 10-21% run-to-run variance on byte-identical configs, so the \"cliff\" was noise. Real cost (720p, 20 steps, nvfp4_full, paired): 124f 141s, 226f 334s, 362f ~645s with EasyCache -- roughly frames^1.4, smooth, no discontinuity. A 15s take costs ~1.7x per second of video versus a 5.17s one, which is a premium worth paying for a scene that wants an unbroken take rather than a reason to cap. See dhee-cofounder/memory/2026-08-04-h3-cost-scales-as-frames-1-42.md and artifacts/h3-r2v-probe/README.md.", "_comment": "v0.8.0: plan.chapter_merge (mode:sections) >=0.3.0 now ALSO injects a deterministic per-section budgetSec/targetShotCount — that section's own chapter's durationSec split evenly across however many sections that chapter's chapter_outline pass actually produced. This is the fix for a real regression: films were coming out 2-4x their target length (lamp_keeper_msr 108s vs a 54s target, lamp_keeper_v2 364s vs a 95s target) because the LLM-authored pacing guidance in prompts/chapter_outline.md (sections ≈ durationSec ÷ 15) and prompts/scene_detail.md's own duration arithmetic were both prose the model did not reliably follow. Doing the division here — deterministically, after the section count is already fixed — makes the film's TOTAL duration correct BY CONSTRUCTION regardless of how many sections the outline pass created. This is a PROPORTIONAL BUDGET, never a cap — it scales without limit with durationSec and section count. Do NOT delete this under the belief it re-introduces a section-count ceiling; it does not. See prompts/scene_detail.md (consumes budgetSec/targetShotCount directly) and plan.assemble_keyframes' chaptersInput tripwire (scenes_plan node below) which verifies the fix held.",
+          "_comment_maxClipSec": "v0.13.0: 15.09, mirroring scene_clip.maxSeconds 15 so the budget a section is authored against equals the clip length actually rendered -- otherwise the [Shot N] At MM:SS.mmm cut times land out of sync with the finished clip. Why 15.09 and not 15.08: resolveClipCeilingSec snaps a configured value DOWN to a legal grid point, and 15.08*24 = 361.92 would fall to 345f (14.375s), surrendering 0.71s. 15.09*24 = 362.16 snaps down to 362f = 15.083s, which is what scene_clip renders (the h3 runner snaps UP, so maxSeconds 15 -> 360f -> 362f). CORRECTS TWO CLAIMS in the v0.12.0 version of this comment. (a) It said \"H3's absolute maximum is 10.83s (260f)\" -- wrong; the node tooltip gives the trained range as ~124-362 frames, i.e. up to 15.08s, and 362f has been rendered successfully. (b) It said \"226f+ costs ~3.5x marginal\", citing a cost cliff that is now RETRACTED: re-measured with fixed steps, 192f->226f came out 306->491s where the original sweep read 288->573s, and the box shows 10-21% run-to-run variance on byte-identical configs, so the \"cliff\" was noise. Real cost (720p, 20 steps, nvfp4_full, paired): 124f 141s, 226f 334s, 362f ~645s with EasyCache -- roughly frames^1.4, smooth, no discontinuity. A 15s take costs ~1.7x per second of video versus a 5.17s one, which is a premium worth paying for a scene that wants an unbroken take rather than a reason to cap. See dhee-cofounder/memory/2026-08-04-h3-cost-scales-as-frames-1-42.md and artifacts/h3-r2v-probe/README.md.",
+          "_comment": "v0.8.0: plan.chapter_merge (mode:sections) >=0.3.0 now ALSO injects a deterministic per-section budgetSec/targetShotCount — that section's own chapter's durationSec split evenly across however many sections that chapter's chapter_outline pass actually produced. This is the fix for a real regression: films were coming out 2-4x their target length (lamp_keeper_msr 108s vs a 54s target, lamp_keeper_v2 364s vs a 95s target) because the LLM-authored pacing guidance in prompts/chapter_outline.md (sections ≈ durationSec ÷ 15) and prompts/scene_detail.md's own duration arithmetic were both prose the model did not reliably follow. Doing the division here — deterministically, after the section count is already fixed — makes the film's TOTAL duration correct BY CONSTRUCTION regardless of how many sections the outline pass created. This is a PROPORTIONAL BUDGET, never a cap — it scales without limit with durationSec and section count. Do NOT delete this under the belief it re-introduces a section-count ceiling; it does not. See prompts/scene_detail.md (consumes budgetSec/targetShotCount directly) and plan.assemble_keyframes' chaptersInput tripwire (scenes_plan node below) which verifies the fix held.",
           "secondsPerShot": 5,
-          "_comment_pacing_derives_from_clip_cap": "v0.8.1: secondsPerShot 8 (the default) -> 4, so that ONE number governs pacing everywhere. A SECTION is exactly one H3 clip and scene_clip caps a clip at 8s (measured: H3's marginal cost jumps ~3.5x between 8.00s and 9.42s). chapter_outline therefore splits at durationSec/8, budgetSec lands ~8, and targetShotCount = round(8/4) = 2 shots of ~4s as CUTS INSIDE that one clip. Previously the outline split at durationSec/15 while the clip capped at 8, so every section was budgeted ~15s and silently lost ~47% of its beats to the clamp -- a 35-section film came out 4m34s against a 6m34s plan. It also created an UNSATISFIABLE DEAD ZONE: with secondsPerShot 8, any budgetSec in (10,12] gave targetShotCount 1 while a shot's schema maximum was 10, so no valid output existed and the run died after three attempts (issue #2). With secondsPerShot 4 and a shot maximum of 8 the dead zone is gone for every budgetSec >= 2."
+          "_comment_pacing_derives_from_clip_cap": "v0.8.1: secondsPerShot 8 (the default) -> 4, so that ONE number governs pacing everywhere. A SECTION is exactly one H3 clip and scene_clip caps a clip at 8s (measured: H3's marginal cost jumps ~3.5x between 8.00s and 9.42s). chapter_outline therefore splits at durationSec/8, budgetSec lands ~8, and targetShotCount = round(8/4) = 2 shots of ~4s as CUTS INSIDE that one clip. Previously the outline split at durationSec/15 while the clip capped at 8, so every section was budgeted ~15s and silently lost ~47% of its beats to the clamp -- a 35-section film came out 4m34s against a 6m34s plan. It also created an UNSATISFIABLE DEAD ZONE: with secondsPerShot 8, any budgetSec in (10,12] gave targetShotCount 1 while a shot's schema maximum was 10, so no valid output existed and the run died after three attempts (issue #2). With secondsPerShot 4 and a shot maximum of 8 the dead zone is gone for every budgetSec >= 2. [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]"
         }
       },
       "displayCapability": "scene.outline"
     },
     {
-      "id": "scene_detail [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
+      "id": "scene_detail",
       "displayName": "Scene Detail (section + shots, per scene)",
       "kind": "collection",
       "itemSource": "scene_outline",
@@ -1355,50 +1330,12 @@
       "displayCapability": "shot.video"
     },
     {
-      "id": "scene_upscaled",
-      "displayName": "Scene Upscale (LTX 2.3 generative upscale)",
-      "kind": "collection",
-      "itemSource": "scenes_plan",
-      "itemKey": "sections",
-      "inputs": [
-        {
-          "from": "scene_clip",
-          "usage": "input",
-          "scope": "matching"
-        },
-        {
-          "from": "upscale",
-          "usage": "context"
-        }
-      ],
-      "outputs": {
-        "format": "video",
-        "pattern": "assets/videos/scenes_upscaled/{{item_id}}.mp4"
-      },
-      "runner": {
-        "tool": "comfy.ltx_upscale",
-        "config": {
-          "_comment": "Upscale pass between the render and the final cut, so the film can be rendered CHEAP and finished SHARP. Measured: H3 cost scales as ~pixels^1.3 (a 5s clip is 55s at 832x480 vs 205s at native 1344x768), so rendering small and upscaling after is far cheaper than paying for pixels at generation time. v0.12.0 SWAPPED comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04). RTX VSR is deterministic and fast (~12s for a 12.25s 480p scene) but NOT generative: it sharpens detail that survived the render and cannot rebuild a face that was mush at 480p -- which was the ceiling on this bundle's whole cheap-render strategy. LTX 2.3's x2 spatial latent upsampler plus a three-step distilled refine IS generative, so it can rebuild what a cheap render lost, at ~45s for a 5s clip to 1080p and ~180s for a 10s one. The two share the same target contract (off / 720p / 1080p / 1440p / 4k / <w>x<h>) so this is a same-node swap with no rewiring and no change to the `upscale` project field. Set upscale 'off' and clips still copy through untouched.",
-          "outputPath": "assets/videos/scenes_upscaled/{{item_id}}.mp4",
-          "endpoint": "self.local",
-          "videoInput": "scene_clip",
-          "upscaleInput": "upscale",
-          "target": "1080p",
-          "conditionOnAudio": true,
-          "timeoutMinutes": 45,
-          "_comment_audio": "conditionOnAudio TRUE is load-bearing for this bundle, not a default worth leaving implicit: every clip here carries H3-generated SPEECH, and the runner encodes the source's own audio into the AV latent so the generative refine cannot re-time mouths. With it off, lip sync drifts on any talking clip. timeoutMinutes raised 20 -> 45 because LTX upscaling is generative and ~15x slower than VSR per clip (~180s for a 10s clip, before queue wait), and the old 20 was sized for VSR.",
-          "_comment_no_workflow": "Unlike comfy.rtx_vsr there is NO workflowPath: dhee-runner-ltx-upscale BUILDS its Comfy graph in code, because the topology is a function of the config (conditioning on real audio vs silence changes the wiring, and an exact-size target adds a post-decode resize). workflows/rtx_vsr_video.json is now unused by this bundle -- left on disk so reverting the swap needs only this node changed back."
-        }
-      },
-      "displayCapability": "shot.video"
-    },
-    {
       "id": "final_video",
       "displayName": "Final Cut",
       "kind": "stage",
       "inputs": [
         {
-          "from": "scene_upscaled",
+          "from": "scene_clip",
           "usage": "input",
           "scope": "all"
         }
@@ -1409,7 +1346,9 @@
       },
       "runner": {
         "tool": "ffmpeg.concat",
-        "config": {}
+        "config": {
+          "_comment_no_upscale": "v0.14.0: concatenates scene_clip DIRECTLY -- the scene_upscaled pass was removed. Measured against ground truth (a real 1280x720 photoreal clip degraded 4x and upscaled back, scored against the original), comfy.ltx_upscale LOST to a free ffmpeg lanczos upscale on H3 output on BOTH fidelity (Y-SSIM 0.9193 vs 0.9634) and detail (edge energy 86.7% vs 90.4% of truth): its output was softer than its own input. Feeding H3's own generation prompt verbatim changed nothing (83.3% vs 83.9%), so it was not a conditioning problem. H3 output is also intrinsically soft -- a 4x downscale of it destroyed only 10% of its edge energy, so there is little detail for any upscaler to recover. The whole render-cheap-finish-sharp premise does not hold for this generator, and the earlier claim that H3 cost scales as pixels^1.3 (true for RESOLUTION) was being used to justify a quality trade it does not buy. If a larger delivery size is needed, scale with ffmpeg after the concat -- it is free and measurably more faithful. See dhee-cofounder/memory/2026-08-04-ltx-upscale-loses-to-lanczos-on-h3-output.md."
+        }
       },
       "displayCapability": "final.video"
     }
@@ -1429,5 +1368,6 @@
         "path": "sections.length"
       }
     ]
-  }
+  },
+  "_comment_v0_14_0": "Upscale pass REMOVED entirely (founder directive). v0.12.0 had swapped comfy.rtx_vsr -> comfy.ltx_upscale on the premise that a generative refine could rebuild detail a cheap render lost; a ground-truth test the same day falsified it -- comfy.ltx_upscale is measurably WORSE than a free ffmpeg lanczos upscale on H3 output, softer than its own input, and unaffected by prompt conditioning. See final_video._comment_no_upscale. Consequences: final_video concatenates scene_clip directly, the comfy.ltx_upscale runner dep and the `upscale` project field are gone, and the bundle is 30 nodes. The `resolution` field still governs H3's own render size, which is where the real quality/cost lever is (480p 55s vs 720p 154s vs 768p 205s at 124 frames -- a 3.7x spread). Render at the resolution you intend to deliver; there is no sharpening pass to lean on."
 }
