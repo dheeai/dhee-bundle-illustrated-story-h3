@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.25.2",
+  "version": "0.26.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -156,6 +156,60 @@
       "label": "Sampler steps",
       "control": "text",
       "placeholder": "'auto' (default) scales 4/6/8/10 with scene complexity — cuts, references, dialogue lines and duration. A number pins every scene to that count. 4 is the turbo LoRA's distilled step count; above ~10 costs time without a measured gain."
+    },
+    {
+      "id": "character_photo_1",
+      "kind": "file",
+      "path": "inputs/character_photo_1.png",
+      "required": false,
+      "label": "Character photo 1 (optional)",
+      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+    },
+    {
+      "id": "character_photo_1_name",
+      "kind": "project",
+      "field": "character_photo_1_name",
+      "required": false,
+      "default": "",
+      "label": "…is which character?",
+      "control": "text",
+      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
+    },
+    {
+      "id": "character_photo_2",
+      "kind": "file",
+      "path": "inputs/character_photo_2.png",
+      "required": false,
+      "label": "Character photo 2 (optional)",
+      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+    },
+    {
+      "id": "character_photo_2_name",
+      "kind": "project",
+      "field": "character_photo_2_name",
+      "required": false,
+      "default": "",
+      "label": "…is which character?",
+      "control": "text",
+      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
+    },
+    {
+      "id": "character_photo_3",
+      "kind": "file",
+      "path": "inputs/character_photo_3.png",
+      "required": false,
+      "label": "Character photo 3 (optional)",
+      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+    },
+    {
+      "id": "character_photo_3_name",
+      "kind": "project",
+      "field": "character_photo_3_name",
+      "required": false,
+      "default": "",
+      "label": "…is which character?",
+      "control": "text",
+      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
     }
   ],
   "goal": "final_video",
@@ -437,6 +491,30 @@
           "from": "character_anchor_prompt",
           "usage": "input",
           "scope": "matching"
+        },
+        {
+          "from": "character_photo_1",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_1_name",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_2",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_2_name",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_3",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_3_name",
+          "usage": "context"
         }
       ],
       "outputs": {
@@ -454,7 +532,22 @@
             "width": 2048,
             "height": 1152
           },
-          "_comment_v0_21_0_plate_res": "v0.21.0 REFERENCE PLATE RESOLUTION. Measured on a real film: H3 was being handed 384x864 plates to render a 1344x768 frame. The 1536x864 sheet was split into FOUR 384px-wide panels, which puts a full-body face at ~60-80px -- below the resolution at which 'one obsidian eye', 'copper wire in grey hair' or 'seams in cooled lava' exist at all, let alone transfer. The bundle already makes this argument for the OUTPUT (it renders native because 480p 'resolves the face to too few pixels'); it was never applied to the INPUT. TWO of the four panels were also pure waste: scene_clip has always used sheetPick [0, 3] with viewsPerCharacter 2, so the profile and back views were generated, stored, state-edited, joined and then discarded. So the sheet is now TWO panels -- the full-body front and the medium close-up, exactly the two that were used -- at 2048x1152 instead of 1536x864. Each panel goes 384x864 -> 1024x1152: 2.7x linear, 3.5x the pixels on the character, for ~1.8x the generation cost and TWO fewer state edits per character rather than more. The sheet is kept rather than generating separate plates because one generation is what guarantees the same person across views; separate calls do not. refImageSize also moves 'match' -> 'max' so H3 keeps up to 2048px short edge instead of downscaling the new detail straight back to the render size."
+          "_comment_v0_21_0_plate_res": "v0.21.0 REFERENCE PLATE RESOLUTION. Measured on a real film: H3 was being handed 384x864 plates to render a 1344x768 frame. The 1536x864 sheet was split into FOUR 384px-wide panels, which puts a full-body face at ~60-80px -- below the resolution at which 'one obsidian eye', 'copper wire in grey hair' or 'seams in cooled lava' exist at all, let alone transfer. The bundle already makes this argument for the OUTPUT (it renders native because 480p 'resolves the face to too few pixels'); it was never applied to the INPUT. TWO of the four panels were also pure waste: scene_clip has always used sheetPick [0, 3] with viewsPerCharacter 2, so the profile and back views were generated, stored, state-edited, joined and then discarded. So the sheet is now TWO panels -- the full-body front and the medium close-up, exactly the two that were used -- at 2048x1152 instead of 1536x864. Each panel goes 384x864 -> 1024x1152: 2.7x linear, 3.5x the pixels on the character, for ~1.8x the generation cost and TWO fewer state edits per character rather than more. The sheet is kept rather than generating separate plates because one generation is what guarantees the same person across views; separate calls do not. refImageSize also moves 'match' -> 'max' so H3 keeps up to 2048px short edge instead of downscaling the new detail straight back to the render size.",
+          "castPhotoInputs": [
+            {
+              "photoInput": "character_photo_1",
+              "nameInput": "character_photo_1_name"
+            },
+            {
+              "photoInput": "character_photo_2",
+              "nameInput": "character_photo_2_name"
+            },
+            {
+              "photoInput": "character_photo_3",
+              "nameInput": "character_photo_3_name"
+            }
+          ],
+          "_comment_v0_26_0_cast_photos": "v0.26.0 CAST PHOTOS. Three optional slots let an operator hand the film a REAL face for a character, each paired with a name field. comfy.tti (dhee-runner-image-edit >=0.8.0) matches the typed name against this item's id by token containment -- 'Ramesh' and 'Ramesh Kulkarni' both bind to ramesh_kulkarni, 'Nisha' does not -- and on a match COPIES the photo to this node's output without calling Comfy at all. The plate is SKIPPED, not generated and then displaced. This supersedes protagonist_photo for the character case: that input is a pinnedRef on scene_clip, which attaches one face to every clip and still pays to generate the plate it displaces. It is kept for back-compat and for the single-lead shorthand. KNOWN DIFFERENCE: a generated plate is a TWO-VIEW sheet that scene_clip splits into #v0/#v1, so a character gets two reference slots. A supplied photograph is one view and yields ONE slot. That is usually the right trade for a real face, but it is a real behavioural difference and not a bug. Matching is deliberately strict: a near miss falls through to generation rather than binding the wrong face to a character."
         }
       },
       "displayCapability": "character.image"
