@@ -290,6 +290,15 @@ physical sounds and breathing. Use `N/A` only for genuine silence.
 `nonDiegeticMusic` describes score the characters cannot hear: instrumentation,
 speed, rhythm and dynamic change. Use `N/A` when there is no score.
 
+**If this scene has NO spoken dialogue, `nonDiegeticMusic` MUST be `N/A`.** This
+is not a taste rule. H3 synthesises one audio track for the whole clip, and with
+no words anywhere in the prompt to anchor the vocal channel, a request for score
+comes back as gibberish — sung or muttered voice-shaped noise over the music. It
+is the same failure as describing someone speaking without giving their words.
+A wordless scene with a score is ordinary cinema and H3 simply cannot do it: put
+the mood in `overallSoundscape` as physical sound instead, and score it in the
+edit if it needs scoring.
+
 `negatives` is an explicit list of things H3 must not generate, such as
 subtitles, extra people, anachronistic props, soft dissolves or a redesigned
 reference. The graph has no negative-conditioning input, so the runner writes
