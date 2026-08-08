@@ -4,7 +4,16 @@ follow, so all the plates look like frames from a single film.
 Story:
 {{story}}
 
-Style hint from the user: {{style}}
+Style requested by the operator: {{style}}
+
+**The MEDIUM in that line is binding, not a hint.** If it names hand-painted
+illustration, gouache, anime, watercolour, claymation or any other rendering
+medium, the style you define IS that medium and must stay it. Do not convert it
+to "cinematic photoreal", "film still" or "photorealistic" because those read as
+higher production value — that substitution silently changes what every plate
+and every frame of the finished film looks like, and it is not yours to make.
+Palette, lighting and lens language are yours to develop; the medium is not.
+Only choose the medium yourself when the operator named none.
 
 The plates are rendered by an identity-edit model against two fixed reference
 anchors — the anchors keep the CAST consistent, but this shared style string is

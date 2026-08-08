@@ -14,7 +14,8 @@
         "text",
         "sceneBrief",
         "mode",
-        "emotion"
+        "emotion",
+        "entities"
       ],
       "additionalProperties": false,
       "description": "The full detail for THIS one section only — the assembly step collects one of these per scene and flattens them, in section-number order, into the canonical scenes_plan.json.",
@@ -52,7 +53,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Bible ids (characters/locations/objects) VISIBLE across this section's shots — re-injected into shot prompts."
+          "description": "Bible ids (characters, objects AND locations) visible across this section's shots — the allowlist every downstream stage renders from. It MUST cover this section's own prose: anything your `text` or shots describe but that is missing here cannot be given a reference plate, and the render is rejected. Characters stay bound to the outline's cast for this scene; objects and locations may be added from the story bible when the beat needs them, never invented."
         },
         "mode": {
           "type": "string",
@@ -121,11 +122,11 @@
           },
           "dialogue": {
             "type": "string",
-            "description": "ONLY on shots within a mode='dialogue' section. The exact line spoken during THIS shot, verbatim, one speaker's utterance. A speaker change is a new shot. This is the sole source of the spoken line reaching the video model."
+            "description": "ONLY on shots that carry a spoken line, in a mode=\"dialogue\" section. The exact line spoken during THIS shot, verbatim, one speaker utterance. A speaker change is a new shot. OMIT this field entirely on a silent shot — never write an empty string, which fails validation."
           },
           "speaker": {
             "type": "string",
-            "description": "ONLY alongside `dialogue`. The bible character id who speaks this shot's line — selects the anchor identity and drives lip-sync."
+            "description": "ONLY alongside . The bible character id who speaks this shot line — selects the anchor identity and drives lip-sync. Omit entirely when the shot is silent."
           },
           "emotion": {
             "type": "string",

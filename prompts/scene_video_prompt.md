@@ -20,7 +20,16 @@ to filter. Copy ids only from that allowlist: every
 `shots[].sceneryIds[]` entry, and every dialogue
 `subjectId` MUST be an id copied verbatim from the current section's entities.
 Never borrow ids from examples, the story bible generally, another section, or
-your own invention. If an entity from the current section is visible or takes
+your own invention.
+
+**`entities[]` wins over the section's prose.** If the section's `text` mentions
+something that is NOT in `entities` — a lantern the Courier holds, a knife on a
+table — you may not stage it: no reference, no `sceneryIds` entry, no dialogue
+subject, and do not describe it in a shot. Write the beat without it. That thing
+has no reference plate, so staging it is rejected before the render and costs
+the whole run; leaving it out costs one prop. (Measured on a real film: a
+section's text described a lantern its `entities` omitted, the scene was
+authored with it, and the render gate killed the run at that scene.) If an entity from the current section is visible or takes
 effect in the scene, include it in `references` and use that same id in the
 relevant shot or dialogue subject field. Do not invent example ids such as
 `traveler`, `cliff`, `S1`, `L1`, or `tech_01`; `S1`-style values are allowed only
@@ -39,10 +48,12 @@ Write the fields in this order:
 6. `nonDiegeticMusic`
 7. `negatives`
 8. `duration`
-9. `purpose`
-10. `shotStructure`
-11. `performance`
-12. optional `continuationAnchor`
+9. `speechSeconds`
+10. `purpose`
+11. `shotStructure`
+12. `renderComplexity`
+13. `performance`
+14. optional `continuationAnchor`
 
 `duration` is the length of this one H3 call, between 5 and 15.08 seconds. Set
 it to the SUM of this section's planned shot durations (`scene_detail.shots[].duration`)
@@ -58,6 +69,18 @@ staged twice is spoken twice in the finished film.
 style — medium, palette, light quality, finish. The runner emits it immediately
 before `[Shot 1]`, the one place the official guide allows a style opening. Put
 no action, no character and no camera in it.
+
+`speechSeconds` is your estimate of how long the SPOKEN audio takes, end to end
+— every word at the pace this character's `voicePrompt` and your own `delivery`
+imply, plus the pauses you intend between sentences. Leave out lead-in and tail;
+the renderer adds those.
+
+Take the voice seriously when you estimate. A profile reading "slow pace,
+gravelly, deliberate pauses mid-sentence" is far slower than the ~2.8 words per
+second a plain reading assumes, and the renderer's own fallback estimate assumes
+the plain reading. This number can only LENGTHEN the clip, never shorten it — a
+generous estimate costs a little dead air, a mean one cuts the last words off
+mid-sentence. Use `0` when nobody speaks.
 
 `purpose` is one sentence naming the single story beat this scene lands.
 `summary` is a short English paragraph beginning with a task-type prefix such as
@@ -162,10 +185,11 @@ Each reference has:
 - `type`: exactly `character`, `object` or `location`.
 - `appearsAs`: a concise visual description of the current visible state.
 - `job`: what this plate must HOLD VISUALLY — the concrete features to preserve,
-  as a lower-case noun phrase: "her face, the lava forearm texture and the
-  copper-wire hair". NOT a narrative role. "the defiant smith refusing to
-  surrender the Ember" is a character note, not a visual job, and gives the
-  renderer nothing to hold.
+  as a lower-case noun phrase — "her face, the line of her jaw and the way the
+  pallu sits on her shoulder", or "the cracked bronze plate and the copper wire
+  at the jaw". NOT a narrative role: "the defiant smith refusing to surrender
+  the Ember" is a character note, not a visual job, and gives the renderer
+  nothing to hold.
 - optional `retention`: one official marker: `fully_preserved`,
   `partially_preserved`, `attribute_transfer` or `weak_reference`.
 
@@ -192,6 +216,12 @@ Every shot requires:
   if and only if they have an entry here.
 - `sceneryIds`: the OBJECT and LOCATION ids visible in this shot. Never a
   character. Use `[]` when the shot shows none.
+
+  Include an object here only when it MATTERS to this shot — handled, looked at,
+  or the thing the beat is about. Do NOT list a fixture that is simply part of
+  the room: it is already in the location plate, and citing it separately makes
+  the renderer place it afresh in every shot, so it moves around the space
+  between cuts.
 - `action`: the state change, including what is true at the beginning and end.
 - `cameraMotion`: exactly one controlled H3 term from the schema enum. Use
   `Static Shot` when the camera deliberately holds.
@@ -219,6 +249,37 @@ For every shot, cover the visible composition, subject placement, environment
 and light, physical state change, controlled camera term and physical sound.
 Keep those facts in their typed fields; do not assemble them into a prose
 paragraph for another model to parse.
+
+## Render complexity
+
+`renderComplexity` is your judgement of how hard this scene is to RENDER, and it
+sets the sampler step count directly — `simple` 4, `moderate` 6, `complex` 8,
+`extreme` 10. You are the only one who can judge this: you wrote the shot list,
+and nothing downstream can see from a shot count whether those shots contain one
+woman at an anvil or forty skeletons overrunning a shield wall.
+
+Judge it on what the renderer has to resolve, not on what the scene means:
+
+- how many bodies are in motion at once, and how fast
+- fire, smoke, dust, debris, sparks, water — anything with no fixed silhouette
+- fine texture that has to survive being moved (embroidery, jewellery, hair,
+  chainmail, feathers, filigree)
+- how many surfaces a moving light source touches
+
+`simple` — one or two figures, contained movement, stable light. A held beat, a
+conversation across a table, a hand closing on an object.
+`moderate` — several figures, or one demanding element: a fast camera move, a
+single effect, a crowd held still in the background. A family argument in one
+room; a character pushing through a doorway into a lit corridor.
+`complex` — many moving figures AND a demanding element. A crowded wedding or
+market with the camera moving through it; close combat; rain or fire lighting
+the surfaces around it.
+`extreme` — a mass of figures in motion with heavy effects and dynamic light: a
+melee, a collapse, a firestorm, a procession in a downpour at night.
+
+This costs real time, in both directions. A quiet scene marked `extreme` burns
+GPU for nothing; a battle marked `simple` renders as mush. Do not inflate it
+because the beat is dramatically important — importance is not difficulty.
 
 ## Audio sections and negatives
 
@@ -249,10 +310,11 @@ scene can continue cleanly. Omit it when no continuation is needed.
    fits inside `duration`.
 8. `multi_cut` has at least two shots; either single-take value has exactly one.
 9. No field contains subject-definition prose or reference slot numbering.
-10. Every shot has both `acting` (its characters) and `sceneryIds` (its objects
+10. `renderComplexity` reflects RENDER difficulty, not story importance.
+11. Every shot has both `acting` (its characters) and `sceneryIds` (its objects
     and locations), each possibly `[]`. No character appears in `sceneryIds`
     and no object or location appears in `acting`.
-11. Every dialogue line carries a verbatim `voicePrompt`, and any line whose
+12. Every dialogue line carries a verbatim `voicePrompt`, and any line whose
     speaker has no `acting` entry in that same shot sets `offScreen: true`.
 
 ## Supplied context

@@ -1,15 +1,68 @@
 {
-  "1": {
+  "2": {
     "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-      "weight_dtype": "default"
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "8",
+        0
+      ]
     },
-    "class_type": "UNETLoader",
+    "class_type": "VAEDecodeAudio",
     "_meta": {
-      "title": "Load Diffusion Model"
+      "title": "VAE Decode Audio"
     }
   },
-  "2": {
+  "3": {
+    "inputs": {
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "4": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "images": [
+        "3",
+        0
+      ],
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "Math Expression"
+    }
+  },
+  "7": {
     "inputs": {
       "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
       "type": "minimax",
@@ -20,16 +73,7 @@
       "title": "Load CLIP"
     }
   },
-  "3": {
-    "inputs": {
-      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "Load VAE"
-    }
-  },
-  "4": {
+  "8": {
     "inputs": {
       "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
     },
@@ -38,32 +82,76 @@
       "title": "Load VAE"
     }
   },
-  "7": {
+  "10": {
     "inputs": {
-      "prompt": "__POS__",
-      "width": [
-        "20",
+      "model": [
+        "51",
         0
       ],
-      "height": [
-        "20",
-        1
+      "conditioning": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "Basic Guider"
+    }
+  },
+  "11": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "12": {
+    "inputs": {
+      "noise": [
+        "46",
+        0
       ],
-      "length": [
-        "22",
-        1
+      "guider": [
+        "10",
+        0
       ],
+      "sampler": [
+        "60",
+        0
+      ],
+      "sigmas": [
+        "57",
+        0
+      ],
+      "latent_image": [
+        "23",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "23": {
+    "inputs": {
+      "prompt": "__POS__",
+      "width": 1344,
+      "height": 768,
+      "length": 175,
       "ref_image_size": "match",
       "clip": [
-        "2",
+        "7",
         0
       ],
       "vae": [
-        "3",
+        "11",
         0
       ],
       "audio_vae": [
-        "4",
+        "8",
         0
       ],
       "ref_images.ref_image_0": [
@@ -80,7 +168,28 @@
       "title": "MiniMax H3 Reference to Video"
     }
   },
-  "8": {
+  "36": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "45": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 1,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "Resolution Selector (Size)"
+    }
+  },
+  "46": {
     "inputs": {
       "noise_seed": 42
     },
@@ -89,180 +198,13 @@
       "title": "RandomNoise"
     }
   },
-  "9": {
-    "inputs": {
-      "sage_attention": "auto",
-      "allow_compile": false,
-      "model": [
-        "turbo_lora",
-        0
-      ]
-    },
-    "class_type": "PathchSageAttentionKJ",
-    "_meta": {
-      "title": "Patch Sage Attention KJ"
-    }
-  },
-  "10": {
-    "inputs": {
-      "resuse_threshold": 0.03,
-      "start_percent": 0.15,
-      "end_percent": 0.9,
-      "max_steps": 1,
-      "device": "auto",
-      "verbose": true,
-      "model": [
-        "9",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3Cache",
-    "_meta": {
-      "title": "MiniMaxH3 Cache"
-    }
-  },
-  "11": {
-    "inputs": {
-      "max_resolution": 1024,
-      "jpeg_quality": 80,
-      "suppress_default_preview": true,
-      "preview_frames": 1,
-      "preview_fps": 12,
-      "model": [
-        "10",
-        0
-      ]
-    },
-    "class_type": "ModelPreviewOverrideKJ",
-    "_meta": {
-      "title": "Model Preview Override"
-    }
-  },
-  "12": {
-    "inputs": {},
-    "class_type": "MiniMaxH3TurboSampler",
-    "_meta": {
-      "title": "MiniMax-H3 Turbo Sampler (4-step)"
-    }
-  },
-  "13": {
-    "inputs": {
-      "scheduler": "simple",
-      "steps": 8,
-      "denoise": 1,
-      "model": [
-        "turbo_shift",
-        0
-      ]
-    },
-    "class_type": "BasicScheduler",
-    "_meta": {
-      "title": "BasicScheduler"
-    }
-  },
-  "14": {
-    "inputs": {
-      "model": [
-        "turbo_shift",
-        0
-      ],
-      "conditioning": [
-        "7",
-        0
-      ]
-    },
-    "class_type": "BasicGuider",
-    "_meta": {
-      "title": "Basic Guider"
-    }
-  },
-  "15": {
-    "inputs": {
-      "noise": [
-        "8",
-        0
-      ],
-      "guider": [
-        "14",
-        0
-      ],
-      "sampler": [
-        "12",
-        0
-      ],
-      "sigmas": [
-        "13",
-        0
-      ],
-      "latent_image": [
-        "7",
-        1
-      ]
-    },
-    "class_type": "SamplerCustomAdvanced",
-    "_meta": {
-      "title": "SamplerCustomAdvanced"
-    }
-  },
-  "16": {
-    "inputs": {
-      "samples": [
-        "15",
-        0
-      ],
-      "vae": [
-        "3",
-        0
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "17": {
-    "inputs": {
-      "samples": [
-        "15",
-        1
-      ],
-      "vae": [
-        "4",
-        0
-      ]
-    },
-    "class_type": "VAEDecodeAudio",
-    "_meta": {
-      "title": "VAE Decode Audio"
-    }
-  },
-  "18": {
-    "inputs": {
-      "fps": 24,
-      "bit_depth": 8,
-      "images": [
-        "16",
-        0
-      ],
-      "audio": [
-        "17",
-        0
-      ]
-    },
-    "class_type": "CreateVideo",
-    "_meta": {
-      "title": "Create Video"
-    }
-  },
-  "19": {
+  "47": {
     "inputs": {
       "filename_prefix": "h3_scene",
       "format": "mp4",
       "codec": "h264",
-      "codec.encoding": "re-encode",
-      "codec.encoding.crf": 15,
       "video": [
-        "18",
+        "4",
         0
       ]
     },
@@ -271,83 +213,122 @@
       "title": "Save Video"
     }
   },
-  "20": {
+  "48": {
     "inputs": {
-      "aspect_ratio": "16:9 (Widescreen)",
-      "megapixels": 0.4,
-      "multiple": 32
+      "value": ""
     },
-    "class_type": "ResolutionSelector",
+    "class_type": "PrimitiveStringMultiline",
     "_meta": {
-      "title": "Resolution Selector (Size)"
+      "title": "Input Text (Prompt)"
     }
   },
-  "21": {
+  "51": {
     "inputs": {
-      "value": 5
+      "max_resolution": 1024,
+      "jpeg_quality": 80,
+      "suppress_default_preview": true,
+      "preview_frames": 50,
+      "preview_fps": 10,
+      "model": [
+        "59",
+        0
+      ]
+    },
+    "class_type": "ModelPreviewOverrideKJ",
+    "_meta": {
+      "title": "Model Preview Override"
+    }
+  },
+  "54": {
+    "inputs": {
+      "sage_attention": "sageattn_qk_int8_pv_fp16_triton",
+      "allow_compile": false,
+      "model": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": "Patch Sage Attention KJ"
+    }
+  },
+  "56": {
+    "inputs": {
+      "value": 4
     },
     "class_type": "PrimitiveFloat",
     "_meta": {
       "title": "Float (Duration)"
     }
   },
-  "22": {
+  "57": {
     "inputs": {
-      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
-      "values.a": [
-        "21",
-        0
-      ]
-    },
-    "class_type": "ComfyMathExpression",
-    "_meta": {
-      "title": "Math Expression"
-    }
-  },
-  "h3Ref0": {
-    "inputs": {
-      "image": "example.png"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "Load Image"
-    }
-  },
-  "h3Ref1": {
-    "inputs": {
-      "image": "example.png"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "Load Image"
-    }
-  },
-  "turbo_lora": {
-    "inputs": {
-      "lora_name": "minimax_h3_turbo_4step_pruned_comfyui.safetensors",
-      "strength": 1,
+      "scheduler": "simple",
+      "steps": 4,
+      "denoise": 1,
       "model": [
-        "1",
+        "51",
         0
       ]
     },
-    "class_type": "MiniMaxH3TurboLoRA",
+    "class_type": "BasicScheduler",
     "_meta": {
-      "title": "MiniMax-H3 Turbo LoRA"
+      "title": "BasicScheduler"
     }
   },
-  "turbo_shift": {
+  "59": {
     "inputs": {
       "shift_video": 12,
-      "shift_audio": 4,
+      "shift_audio": 3,
       "model": [
-        "11",
+        "54",
         0
       ]
     },
     "class_type": "MiniMaxH3SigmaShift",
     "_meta": {
       "title": "MiniMax H3 Sigma Shift"
+    }
+  },
+  "60": {
+    "inputs": {},
+    "class_type": "MiniMaxH3TurboSampler",
+    "_meta": {
+      "title": "MiniMax-H3 Turbo Sampler (4-step)"
+    }
+  },
+  "61": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "minimax_h3_turbo_v4_step600_ema_pruned_comfy.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "36",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "h3Ref0": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
+    }
+  },
+  "h3Ref1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "example.png"
     }
   }
 }

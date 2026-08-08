@@ -12,8 +12,10 @@
     "nonDiegeticMusic",
     "negatives",
     "duration",
+    "speechSeconds",
     "purpose",
     "shotStructure",
+    "renderComplexity",
     "performance"
   ],
   "properties": {
@@ -295,6 +297,11 @@
       "maximum": 15.08,
       "description": "Total seconds for this one H3 call. Every shot must fit inside it."
     },
+    "speechSeconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Your estimate of how many seconds the SPOKEN audio takes end to end: every word at the pace the voice profile and delivery imply, plus the pauses you intend between sentences. Exclude lead-in and tail — the renderer adds those. It raises the clip length when it is longer than the renderer's own estimate, and can never shorten it, so a generous number costs a little dead air while a mean one cuts the last words off. Read the voicePrompt: 'slow pace, gravelly, deliberate pauses' is far slower than the ~2.8 words/second a plain reading assumes. Use 0 when nobody speaks."
+    },
     "purpose": {
       "type": "string",
       "description": "The single story beat this scene lands."
@@ -307,6 +314,16 @@
         "multi_cut"
       ],
       "description": "Use multi_cut for two or more shots; use continuous_moving or locked_single for exactly one shot. The runner enforces the count and timing rules."
+    },
+    "renderComplexity": {
+      "type": "string",
+      "enum": [
+        "simple",
+        "moderate",
+        "complex",
+        "extreme"
+      ],
+      "description": "How hard this scene is to RENDER — not how important it is to the story. This sets the sampler step count, so it costs real time: simple=4 steps, moderate=6, complex=8, extreme=10. Judge it on what the renderer has to resolve: how many bodies are moving at once, how fast they move, how much fire/smoke/debris/particle work there is, how much fine texture has to survive being in motion, and how many surfaces interact with a moving light source. simple = one or two figures, contained movement, stable light (a held beat, a conversation, a hand on an object). moderate = several figures or one demanding element (a fast camera move, one effect, a crowd held in the background). complex = many moving figures AND an effect, or combat, or fire lighting the surfaces around it. extreme = a mass of figures in motion with heavy effects and dynamic light — a melee, a collapse, a firestorm. A quiet scene marked extreme wastes GPU; a battle marked simple renders as mush. Do not inflate it for dramatic weight."
     },
     "performance": {
       "type": "object",

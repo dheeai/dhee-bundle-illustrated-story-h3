@@ -228,14 +228,69 @@ wordless shots are correct.
   pouring into a lamp, a wave rising with a distant answering light), not a
   character standing or looking at something. See "Shots are ACTIONS, not
   portraits" below — the same rule applies here.
-- `mode`: copy verbatim from the outline (`"narration"` or `"dialogue"`).
+- `mode`: copy from the outline (`"narration"` or `"dialogue"`) — with ONE
+  exception. `mode: "dialogue"` is a promise that a shot in this section carries
+  a spoken line, and the schema enforces it. If your beat genuinely has nobody
+  speaking — a held silence, an action, someone alone before anyone arrives —
+  then set `"narration"` instead. Do not keep `"dialogue"` and try to satisfy it
+  with an empty string: `dialogue: ""` fails validation and burns the whole
+  node, and inventing a line to fill the slot is worse, because it puts words in
+  the film that the story never wrote.
+
+  **Never emit `dialogue` or `speaker` as an empty string. OMIT the fields
+  entirely on a shot with no line.** (Measured: an opening section of one woman
+  alone making tea was marked `dialogue` by the outline; the model kept the mode
+  and wrote `dialogue: ""` on both shots, failed schema validation three times,
+  and killed the run.)
 - `emotion`: copy VERBATIM from the outline — like `mode`, do not reclassify
   it. This is the ONE feeling this section serves; every shot's framing,
   lighting and motion in this fragment must be built to support it.
-- `entities` (optional): the bible ids (characters/locations/objects) VISIBLE
-  across this section's shots — start from the outline's list, refine if
-  needed. List EVERY character physically present in the beat, including
-  anyone the speaker talks to.
+- `entities` (REQUIRED, and it must match your own prose): the bible ids
+  (characters, objects AND locations) visible across this section's shots.
+  Start from the outline's list and refine it.
+
+  **Whatever you describe, you must declare.** This list is the allowlist every
+  downstream stage renders from — a prop your `text` or a shot describes but
+  that is missing here CANNOT be given a reference plate, and the render is
+  rejected outright. So when you finish writing, read your own prose back and
+  make sure every bible thing in it is in this list: every character physically
+  present (including anyone the speaker talks to), every object handled, held,
+  offered, set down or pointed at, and the location.
+
+  The two directions are NOT symmetric:
+  - **Characters** stay bound to the outline's cast — see limit 1 above. If the
+    outline did not place a character in this scene, you may neither depict them
+    nor add them here.
+  - **Objects and locations** you MAY add from the story bible when your beat
+    genuinely needs them — a lantern the Courier extends, a knife on the table.
+    Add the bible id here at the same moment you write it into the prose. Never
+    invent one that is not in the bible.
+
+  (Measured: a section's `text` described the Courier's iron lantern while
+  `entities` omitted it. The scene author downstream then staged the lantern —
+  a fair reading of its own section text — and the render gate rejected the
+  scene. The prose and the list are written by YOU, in one object; nothing else
+  can keep them in agreement.)
+
+## Show people arriving
+
+When a character is in this section who was NOT in the previous one, their
+ENTRANCE is a beat and you must stage it. Cutting from "she is alone" to "they
+are both here" is a continuity break: the audience never saw the second person
+come in, so the room silently changed behind them.
+
+Give the arrival its own shot, or open the section on it — the door, the step
+in, the pause on the threshold, the other person registering them. Then let the
+scene start. The same applies to leaving: if someone is gone in the next
+section, show them go.
+
+Reported on a real film: a section opened with one woman alone making tea and
+the next opened with the second woman already seated at the table, although the
+source text said plainly that she stops in the doorway first. The entrance was
+in the story and the plan dropped it.
+
+This is not optional colour. An entrance is where status is set — who stands,
+who stays seated, who does not look up — and cutting it throws that away.
 
 ## Framing serves the emotion
 Choose each shot's framing by what this section's `emotion` needs the audience

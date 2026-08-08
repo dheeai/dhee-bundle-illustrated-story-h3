@@ -1,20 +1,68 @@
 {
-  "_comment": "CANONICAL FAST H3 GRAPH \u2014 adapted verbatim from the founder's own ComfyUI export MiniMax_H3_r2v_int8_MMH3Cache_adapted_api.json (founder-tested on the 5090, 2026-08-05). The model chain is UNETLoader(minimax_h3_ref2va_pruned_int8_convrot) -> PathchSageAttentionKJ(auto, allow_compile false) -> MiniMaxH3Cache(resuse_threshold 0.03 \u2014 that misspelling is the node's real input name \u2014 active 15%-90%, max_steps 1) -> ModelPreviewOverrideKJ -> BasicGuider. Sampling is res_multistep + the simple scheduler at 20 steps, guidance-distilled (BasicGuider, no CFG), so there is NO negative conditioning input: negatives must be written as prose in the prompt. NOTE BasicScheduler deliberately takes its model from the SAGE-ATTENTION node, not from the cache \u2014 sigmas do not need the cache wrapper. This graph REPLACES the earlier nvfp4 + EasyCache/Spectrum graphs. AUDIO LATENT FIX, do not regress it: VAEDecodeAudio reads SamplerCustomAdvanced output index 1 (the AUDIO latent). Every graph before this one wired index 0 \u2014 the VIDEO latent \u2014 into the audio VAE. ALMOST EVERYTHING HERE IS OVERRIDDEN AT RUN TIME by dhee-runner-minimax-h3 from the node's bundle.json config: prompt, the whole reference-image group, width, height, length, ref_image_size, steps, scheduler, sampler_name, noise_seed, fps, SaveVideo.filename_prefix, and every MiniMaxH3Cache parameter (cache / cacheThreshold / cacheStart / cacheEnd / cacheMaxSteps). Editing those values HERE alone changes nothing \u2014 change the bundle.json config. The values below are kept in sync with it so this file still reads as the truth about what actually runs. Set cache:false in config to A/B the cache: the runner deletes the node and rewires downstream model consumers to its upstream.",
-  "_comment_bundle": "illustrated_story_h3: 1344x768 is H3's NATIVE LANDSCAPE geometry (768 short edge, capped 768x1344, /32) and a deliberate cost decision \u2014 2.58x the pixels of the stock ComfyUI template's 0.4MP, 178s vs 68s for a 5s/124-frame clip. Accepted because at 480p a full-body character resolves the face to too few pixels and the identity plates stop doing their job. length 362 = 15.08s at 24fps, the top of H3's trained range; the runner derives the real length per section from the dialogue and snaps it to the 17k+5 grid.",
-  "_comment_refs": "Reference images: ONE placeholder LoadImage (h3Ref0) wired in the DOTTED autogrow form the runner itself emits. The runner deletes every ref_image_*/ref_images.* key and rebuilds one h3Ref{i} LoadImage per uploaded reference, so the count here is irrelevant. The founder's export ships two demo plates (ref_woman_00033.png / ref_man_00034.png) that would be left dangling and point at files no dhee project uploads \u2014 dropped on purpose.",
-  "_comment_encode": "SaveVideo encode is EXPLICIT, not 'auto'. With codec:auto ComfyUI's defaults produced 3.5-4.4 Mbps h264 at 720p24, which visibly blocks on fast motion \u2014 measured on a rain/neon rooftop chase where nearly every pixel changes every frame, the worst case for a low bitrate. codec is a nested COMFY_DYNAMICCOMBO_V3: the selected key goes on the input and its own fields arrive as DOTTED sub-keys, nesting one level deeper for `encoding` (codec=h264, codec.encoding=re-encode, codec.encoding.crf=15). CRF 15 against a default of 23 (lower is better, range 0-51). This is a genuine quality gain rather than a re-encode of existing damage: CreateVideo hands SaveVideo RAW FRAMES, so this is the FIRST encode \u2014 'encoding: auto' only passes a stream through when one already exists, which is not the case downstream of a VAEDecode. The founder's raw export ships format/codec 'auto'; that is the one thing here deliberately NOT taken verbatim.",
-  "_comment_unet": "Staged unet sizes on the box: pruned_nvfp4 11,944 MB, nvfp4_full 17,876 MB, pruned_int8_convrot 19,995 MB. int8_convrot is the largest and is still the founder's call \u2014 in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length regardless (ComfyUI keeps the 14,956 MB text encoder on CPU by default), so unet size is not the memory dial. History: pruned_nvfp4 -> nvfp4_full (measured 17-18% faster, 141s vs 169s at 124f and 334s vs 407s at 226f) -> pruned_int8_convrot with MiniMaxH3Cache + sage attention, this graph.",
-  "1": {
+  "2": {
     "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
-      "weight_dtype": "default"
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "8",
+        0
+      ]
     },
-    "class_type": "UNETLoader",
+    "class_type": "VAEDecodeAudio",
     "_meta": {
-      "title": "Load Diffusion Model"
+      "title": "VAE Decode Audio"
     }
   },
-  "2": {
+  "3": {
+    "inputs": {
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "4": {
+    "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "images": [
+        "3",
+        0
+      ],
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video"
+    }
+  },
+  "5": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "Math Expression"
+    }
+  },
+  "7": {
     "inputs": {
       "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
       "type": "minimax",
@@ -25,16 +73,7 @@
       "title": "Load CLIP"
     }
   },
-  "3": {
-    "inputs": {
-      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
-    },
-    "class_type": "VAELoader",
-    "_meta": {
-      "title": "Load VAE"
-    }
-  },
-  "4": {
+  "8": {
     "inputs": {
       "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
     },
@@ -43,125 +82,14 @@
       "title": "Load VAE"
     }
   },
-  "7": {
-    "inputs": {
-      "prompt": "__POS__",
-      "width": 1344,
-      "height": 768,
-      "length": 362,
-      "ref_image_size": "match",
-      "clip": [
-        "2",
-        0
-      ],
-      "vae": [
-        "3",
-        0
-      ],
-      "audio_vae": [
-        "4",
-        0
-      ],
-      "ref_images.ref_image_0": [
-        "h3Ref0",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3ReferenceToVideo",
-    "_meta": {
-      "title": "MiniMax H3 Reference to Video"
-    }
-  },
-  "8": {
-    "inputs": {
-      "noise_seed": 42
-    },
-    "class_type": "RandomNoise",
-    "_meta": {
-      "title": "RandomNoise"
-    }
-  },
-  "9": {
-    "inputs": {
-      "sage_attention": "auto",
-      "allow_compile": false,
-      "model": [
-        "1",
-        0
-      ]
-    },
-    "class_type": "PathchSageAttentionKJ",
-    "_meta": {
-      "title": "Patch Sage Attention KJ"
-    }
-  },
   "10": {
     "inputs": {
-      "resuse_threshold": 0.03,
-      "start_percent": 0.15,
-      "end_percent": 0.9,
-      "max_steps": 1,
-      "device": "auto",
-      "verbose": true,
       "model": [
-        "9",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3Cache",
-    "_meta": {
-      "title": "MiniMaxH3 Cache"
-    }
-  },
-  "11": {
-    "inputs": {
-      "max_resolution": 1024,
-      "jpeg_quality": 80,
-      "suppress_default_preview": true,
-      "preview_frames": 1,
-      "preview_fps": 12,
-      "model": [
-        "10",
-        0
-      ]
-    },
-    "class_type": "ModelPreviewOverrideKJ",
-    "_meta": {
-      "title": "Model Preview Override"
-    }
-  },
-  "12": {
-    "inputs": {
-      "sampler_name": "res_multistep"
-    },
-    "class_type": "KSamplerSelect",
-    "_meta": {
-      "title": "KSamplerSelect"
-    }
-  },
-  "13": {
-    "inputs": {
-      "scheduler": "simple",
-      "steps": 20,
-      "denoise": 1,
-      "model": [
-        "9",
-        0
-      ]
-    },
-    "class_type": "BasicScheduler",
-    "_meta": {
-      "title": "BasicScheduler"
-    }
-  },
-  "14": {
-    "inputs": {
-      "model": [
-        "11",
+        "51",
         0
       ],
       "conditioning": [
-        "7",
+        "23",
         0
       ]
     },
@@ -170,26 +98,35 @@
       "title": "Basic Guider"
     }
   },
-  "15": {
+  "11": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "12": {
     "inputs": {
       "noise": [
-        "8",
+        "46",
         0
       ],
       "guider": [
-        "14",
+        "10",
         0
       ],
       "sampler": [
-        "12",
+        "60",
         0
       ],
       "sigmas": [
-        "13",
+        "57",
         0
       ],
       "latent_image": [
-        "7",
+        "23",
         1
       ]
     },
@@ -198,80 +135,200 @@
       "title": "SamplerCustomAdvanced"
     }
   },
-  "16": {
+  "23": {
     "inputs": {
-      "samples": [
-        "15",
+      "prompt": "__POS__",
+      "width": 1344,
+      "height": 768,
+      "length": 175,
+      "ref_image_size": "match",
+      "clip": [
+        "7",
         0
       ],
       "vae": [
-        "3",
-        0
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "17": {
-    "inputs": {
-      "samples": [
-        "15",
-        1
-      ],
-      "vae": [
-        "4",
-        0
-      ]
-    },
-    "class_type": "VAEDecodeAudio",
-    "_meta": {
-      "title": "VAE Decode Audio"
-    }
-  },
-  "18": {
-    "inputs": {
-      "fps": 24,
-      "bit_depth": 8,
-      "images": [
-        "16",
+        "11",
         0
       ],
-      "audio": [
-        "17",
+      "audio_vae": [
+        "8",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "h3Ref0",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "h3Ref1",
         0
       ]
     },
-    "class_type": "CreateVideo",
+    "class_type": "MiniMaxH3ReferenceToVideo",
     "_meta": {
-      "title": "Create Video"
+      "title": "MiniMax H3 Reference to Video"
     }
   },
-  "19": {
+  "36": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "45": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 1,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "Resolution Selector (Size)"
+    }
+  },
+  "46": {
+    "inputs": {
+      "noise_seed": 42
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "47": {
     "inputs": {
       "filename_prefix": "h3_scene",
       "format": "mp4",
       "codec": "h264",
       "video": [
-        "18",
+        "4",
         0
-      ],
-      "codec.encoding": "re-encode",
-      "codec.encoding.crf": 15
+      ]
     },
     "class_type": "SaveVideo",
     "_meta": {
       "title": "Save Video"
     }
   },
+  "48": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Input Text (Prompt)"
+    }
+  },
+  "51": {
+    "inputs": {
+      "max_resolution": 1024,
+      "jpeg_quality": 80,
+      "suppress_default_preview": true,
+      "preview_frames": 50,
+      "preview_fps": 10,
+      "model": [
+        "59",
+        0
+      ]
+    },
+    "class_type": "ModelPreviewOverrideKJ",
+    "_meta": {
+      "title": "Model Preview Override"
+    }
+  },
+  "54": {
+    "inputs": {
+      "sage_attention": "sageattn_qk_int8_pv_fp16_triton",
+      "allow_compile": false,
+      "model": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": "Patch Sage Attention KJ"
+    }
+  },
+  "56": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Float (Duration)"
+    }
+  },
+  "57": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": 4,
+      "denoise": 1,
+      "model": [
+        "51",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "59": {
+    "inputs": {
+      "shift_video": 12,
+      "shift_audio": 3,
+      "model": [
+        "54",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3SigmaShift",
+    "_meta": {
+      "title": "MiniMax H3 Sigma Shift"
+    }
+  },
+  "60": {
+    "inputs": {},
+    "class_type": "MiniMaxH3TurboSampler",
+    "_meta": {
+      "title": "MiniMax-H3 Turbo Sampler (4-step)"
+    }
+  },
+  "61": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "minimax_h3_turbo_v4_step600_ema_pruned_comfy.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "36",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
   "h3Ref0": {
+    "class_type": "LoadImage",
     "inputs": {
       "image": "example.png"
-    },
+    }
+  },
+  "h3Ref1": {
     "class_type": "LoadImage",
-    "_meta": {
-      "title": "Load Image"
+    "inputs": {
+      "image": "example.png"
     }
   }
 }

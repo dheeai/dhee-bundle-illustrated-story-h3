@@ -62,6 +62,25 @@ Extract, as pure VISUAL descriptions:
   window, dim tungsten bulb overhead") — so every shot prompt set in this
   location inherits the same light.
 - **objects** — key props THAT APPEAR IN THIS CHAPTER that must stay identical
+
+  **An object earns an entry ONLY if it is HANDLED — carried, held, given,
+  taken, worn, set down, or changed by the story.** A lantern someone extends, a
+  script passed between two people, a staff swung in a fight, a wedding bangle
+  never removed: those are props, they travel with a character, and they need
+  their own identity plate.
+
+  **Fixed fixtures and architecture are NOT objects — they belong to the
+  LOCATION.** A gas stove, a kitchen counter, a doorway, a window, a bed, a
+  staircase, an anvil that never moves. Give one its own entry and it becomes an
+  independent reference the renderer must place somewhere in every shot that
+  cites it — with nothing fixing WHERE — so it jumps around the room from cut to
+  cut and the space stops being one space. Reported on a real film: a gas stove
+  promoted to an object appeared in a different position in every shot of the
+  same kitchen.
+
+  Describe such fixtures INSIDE the location's own description instead, where
+  they are part of one plate and hold their position.
+
   across plates (a specific lamp, a red coat, a sword): form, material, colour,
   size, distinctive marks. **A story-critical object — one the plot's actual
   physical action hinges on (dropped, caught, thrown, handed off, broken) — is as

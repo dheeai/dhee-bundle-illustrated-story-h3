@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.19.0",
+  "version": "0.24.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -147,6 +147,15 @@
       "required": false,
       "label": "Location photo (optional)",
       "description": "A real photograph of the primary location. Supply it and it replaces the generated location plate on every clip. Only ONE background plate survives per clip (H3 treats extra backgrounds as clutter), so this displaces the generated one rather than adding to it."
+    },
+    {
+      "id": "render_steps",
+      "kind": "project",
+      "field": "render_steps",
+      "default": "auto",
+      "label": "Sampler steps",
+      "control": "text",
+      "placeholder": "'auto' (default) scales 4/6/8/10 with scene complexity — cuts, references, dialogue lines and duration. A number pins every scene to that count. 4 is the turbo LoRA's distilled step count; above ~10 costs time without a measured gain."
     }
   ],
   "goal": "final_video",
@@ -437,14 +446,15 @@
       "runner": {
         "tool": "comfy.tti",
         "config": {
-          "workflowPath": "workflows/zimage_tti.json",
-          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "workflowPath": "workflows/krea2_tti.json",
+          "manifestPath": "workflows/krea2_tti.manifest.json",
           "endpoint": "self.local",
           "promptInput": "character_anchor_prompt",
           "additionalArgs": {
-            "width": 1536,
-            "height": 864
-          }
+            "width": 2048,
+            "height": 1152
+          },
+          "_comment_v0_21_0_plate_res": "v0.21.0 REFERENCE PLATE RESOLUTION. Measured on a real film: H3 was being handed 384x864 plates to render a 1344x768 frame. The 1536x864 sheet was split into FOUR 384px-wide panels, which puts a full-body face at ~60-80px -- below the resolution at which 'one obsidian eye', 'copper wire in grey hair' or 'seams in cooled lava' exist at all, let alone transfer. The bundle already makes this argument for the OUTPUT (it renders native because 480p 'resolves the face to too few pixels'); it was never applied to the INPUT. TWO of the four panels were also pure waste: scene_clip has always used sheetPick [0, 3] with viewsPerCharacter 2, so the profile and back views were generated, stored, state-edited, joined and then discarded. So the sheet is now TWO panels -- the full-body front and the medium close-up, exactly the two that were used -- at 2048x1152 instead of 1536x864. Each panel goes 384x864 -> 1024x1152: 2.7x linear, 3.5x the pixels on the character, for ~1.8x the generation cost and TWO fewer state edits per character rather than more. The sheet is kept rather than generating separate plates because one generation is what guarantees the same person across views; separate calls do not. refImageSize also moves 'match' -> 'max' so H3 keeps up to 2048px short edge instead of downscaling the new detail straight back to the render size."
         }
       },
       "displayCapability": "character.image"
@@ -501,8 +511,8 @@
       "runner": {
         "tool": "comfy.tti",
         "config": {
-          "workflowPath": "workflows/zimage_tti.json",
-          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "workflowPath": "workflows/krea2_tti.json",
+          "manifestPath": "workflows/krea2_tti.manifest.json",
           "endpoint": "self.local",
           "promptInput": "object_anchor_prompt",
           "additionalArgs": {
@@ -565,8 +575,8 @@
       "runner": {
         "tool": "comfy.tti",
         "config": {
-          "workflowPath": "workflows/zimage_tti.json",
-          "manifestPath": "workflows/zimage_tti.manifest.json",
+          "workflowPath": "workflows/krea2_tti.json",
+          "manifestPath": "workflows/krea2_tti.manifest.json",
           "endpoint": "self.local",
           "promptInput": "location_anchor_prompt",
           "additionalArgs": {
@@ -1072,21 +1082,18 @@
           "statesInput": "character_states_plan",
           "promptsInput": "character_state_prompt",
           "anchorsInput": "character_anchor_image",
-          "views": 4,
+          "views": 2,
           "viewNames": [
             "front_full",
-            "left_profile_full",
-            "back_full",
             "closeup_front"
           ],
           "viewClauses": [
             "This is the full-body view of the character standing and facing the camera directly; keep that exact framing and camera angle.",
-            "This is the full-body view of the character in left-facing profile, seen from their side; keep that exact framing and camera angle.",
-            "This is the full-body view of the character from BEHIND, facing away from the camera, with the back of their head and the back of their clothing visible; keep that exact framing and camera angle, and show only what is visible from behind.",
             "This is the medium close-up view of the character, head to waist, facing the camera; keep that exact framing and crop."
           ],
           "studioConstraint": "The character is photographed in a plain neutral studio against a plain neutral seamless backdrop, with soft even neutral studio lighting and no environment, no ground texture, no cast shadows, no outdoor location and no scene whatsoever. Do not change the backdrop, the lighting or the framing of this photograph.",
-          "tileDir": "assets/images/state_view_tiles_src"
+          "tileDir": "assets/images/state_view_tiles_src",
+          "_comment_v0_21_0": "Two views, matching the two the renderer has always actually used. Halves the state-edit work per character."
         }
       },
       "displayCapability": "character.state"
@@ -1180,8 +1187,8 @@
             "tile": "character_state_view_tile"
           },
           "additionalArgs": {
-            "width": 448,
-            "height": 1024,
+            "width": 1024,
+            "height": 1152,
             "seed": 42
           },
           "concurrency": 2
@@ -1227,7 +1234,7 @@
           "viewPlanInput": "character_state_view_plan",
           "editedTilesInput": "character_state_view",
           "anchorsInput": "character_anchor_image",
-          "views": 4
+          "views": 2
         }
       },
       "displayCapability": "character.image"
@@ -1345,6 +1352,10 @@
         {
           "from": "location_photo",
           "usage": "reference"
+        },
+        {
+          "from": "render_steps",
+          "usage": "context"
         }
       ],
       "outputs": {
@@ -1383,19 +1394,18 @@
           "resolutionInput": "resolution",
           "width": 1344,
           "height": 768,
-          "refImageSize": "match",
-          "steps": 8,
+          "refImageSize": "max",
           "samplerName": "res_multistep",
           "scheduler": "simple",
           "seed": 42,
           "timeoutMinutes": 45,
-          "sheetPanels": 4,
+          "sheetPanels": 2,
           "sheetTypes": [
             "character"
           ],
           "sheetPick": [
             0,
-            3
+            1
           ],
           "viewsPerCharacter": 2,
           "_comment_duration_cap": "v0.9.0: CLIP_CAP raised 8 -> 10s at the founder's request, and propagated to every place that encodes it (chapter_outline divisor, secondsPerShot 5, scene_detail shot max, scene_video_prompt duration max). COST WARNING, measured: a duration sweep at 720p found H3's marginal cost jumps ~3.5x between 8.00s (192 frames, 288s) and 9.42s (226 frames, 573s). 10s snaps to 243 frames (10.13s), which is PAST that knee, so a clip costs roughly 2x an 8s one under the cache settings measured at that time. 8.00s remains the cheapest point per second of finished video; 10s is a deliberate quality/pacing choice, not an efficiency one. [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
@@ -1414,11 +1424,12 @@
             }
           ],
           "_comment_pinned_operator_photos": "v0.7.0 lets an operator hand the bundle REAL photographs. Previously every plate was generated (comfy.tti anchors from the story bible), and there was no way to say 'the lead looks like THIS person'. referenceInputs could not express it either: it resolves the prompt's own references[] by id, so a plate only reaches a clip if the AUTHORING MODEL cites it -- and the model has no way to know an operator input exists. pinnedRefs bypasses references[] and attaches the photo to EVERY clip, which is the right semantics: 'use this actress's face' is a constraint on the whole film, not a per-scene creative decision. Pinned plates are PREPENDED before routeRefs, and that ordering is what makes them OVERRIDE rather than merely add -- routeRefs dedupes by path, keeps only the FIRST background (so location_photo displaces the generated location plate) and fills subject slots in order (so protagonist_photo takes the lowest <Subject N> number and survives the maxRefs cap). Both inputs are OPTIONAL: unsupplied means 'use the generated anchors', and an unreadable file is skipped with a note rather than failing the run. Note the interaction with sheetPanels: generated character plates are multi-view SHEETS that get split into single views, whereas an operator photo is already a single view and passes through untouched. v0.7.1 BUGFIX: both inputs shipped in v0.7.0 WITHOUT a `path` field, which broke every run of this bundle -- walker.ts resolves a kind:'file' input with resolve(projectDir, d.path), so an absent path threw 'The paths[1] argument must be of type string. Received undefined' before any node executed. `required:false` does NOT make `path` optional: the walker needs a path to test existsSync against, and only THEN does required:false let it skip a missing file. So an optional file input still declares where the file would live.",
-          "cache": true,
-          "cacheThreshold": 0.03,
-          "cacheStart": 0.15,
-          "cacheEnd": 0.9,
-          "cacheMaxSteps": 1
+          "stepsAuto": true,
+          "minSteps": 4,
+          "maxSteps": 10,
+          "_comment_v0_20_0_turbo600": "workflows/minimax_h3_turbo_r2v.json is now the founder's ref2va-H3-fast_turbo600_working export, integrated verbatim apart from the three things the runner owns (references, prompt, SaveVideo prefix). It brings the turbo600 LoRA (minimax_h3_turbo_v4_step600_ema_pruned_comfy via rgthree Power Lora Loader), MiniMaxH3SigmaShift 12/3, and the explicit sageattn_qk_int8_pv_fp16_triton kernel. ImageResizeKJv2 was dropped because it draws width/height from ResolutionSelector, which the runner DELETES (it sets geometry on the r2v node), leaving a dangling link; the runner sizes references via ref_image_size anyway. There is NO MiniMaxH3Cache in this graph, so the cache options were removed rather than left inert. STEPS: 4 is the LoRA's distilled count and the default everywhere; this bundle alone scales 4/6/8/10 with scene complexity (cuts, references, dialogue lines, duration) because a 15s four-cut two-hander is not the same problem as an 8s locked single. Measured on the founder's own graph, 4 vs 8 steps was 88.9s vs 160.5s -- 45% faster -- with audio identical within noise (mean -18.7 vs -18.4 dB, HF -38.5 vs -39.4 dB).",
+          "stepsInput": "render_steps",
+          "_comment_reroll": "seed is the BASE; the runner uses (seed + hash(itemId)) so each scene differs but is reproducible. To re-roll ONE bad clip today you must bump this base, which shifts every scene's lineage — a poor mechanism. A per-project `seed` field (same pattern as render_steps/resolution) would make it a one-line project change instead."
         }
       },
       "displayCapability": "shot.video"
@@ -1467,5 +1478,6 @@
   "_comment_v0_15_0": "chapter_screenplay now performs real ADAPTATION rather than transcription. The pass previously asked the director to \"compress ruthlessly\" and framed the job as \"what a viewer standing in the room would see and hear\" -- which points at filming the paragraphs in order. But prose is mostly interiority, backstory, description and summary, and a viewer in the room sees NONE of that, so the hardest and most common adaptation problem (a paragraph of someone thinking) had no instruction at all: it got dropped and the chapter's meaning went with it. Selection was also BINARY (written as a beat, or silently gone) and UNRECORDED, so nothing downstream could tell a deliberate omission from an oversight.\n\nNew required  section: every meaningful element of the chapter gets exactly one row with a disposition -- DRAMATISE (becomes a beat) / DIALOGUE / SETTING / SOUND / IMPLY (the cut carries it) / CUT (with a reason). Only DRAMATISE rows become beats, one-to-one and in order, each headed . Interiority may NEVER be DRAMATISE. Four consequences: the director gets the craft vocabulary the prompt was missing; interiority must land somewhere instead of evaporating; omissions become auditable (CUT + reason) so no later stage helpfully re-adds them; and THE SECONDS BUDGET NOW BITES AT SELECTION TIME (~durationSec/8 DRAMATISE rows) instead of being asserted upstream and then enforced by a downstream clamp with no judgement -- the v0.8.1 failure where a 35-section film came out 4m34s against a 6m34s plan. SOUND is called out as the under-used lever: H3 generates synced audio from the same prompt, so conveying something by sound is free.\n\nTerminal self-check added (this bundle has measured that the terminal position holds best), verifying row coverage, the DRAMATISE count against budget, beat<->row correspondence, that no DRAMATISE row is interiority, that every non-DRAMATISE row names a beat that really carries it, and that every CUT has a reason.\n\nPrompt-only change -- chapter_screenplay emits markdown and has no outputSchema. NOT YET RUN. The design discussion also identified a follow-on: with the disposition table in place, \"did we lose the story?\" becomes a checkable question and a coverage-critic pass has something concrete to check against. That is deliberately NOT built yet -- note that bundles_removed_no_direction_planning/ holds two agentic bundles that were pulled for lacking direction planning, i.e. agency without a plan to work against. Dispositions first, critic second.",
   "_comment_v0_16_0": "Coverage critic added, closing the loop v0.15.0's Adaptation table opened. chapter_screenplay_draft authors the adaptation (unchanged prompt); the new chapter_screenplay re-reads the SOURCE PROSE against the draft's disposition table and fixes only what fell through -- unaccounted elements, interiority wrongly marked DRAMATISE, dispositions that land in no beat, unjustified CUTs, broken table<->beat correspondence. It MUST NOT touch beats, so continuity stays valid and it cannot drift into re-authoring; a clean draft passes through verbatim with a `### Coverage Audit` note. Naming is deliberate: the reviewed node keeps the `chapter_screenplay` id so all three downstream consumers and both {{chapter_screenplay}} template variables keep working -- llm.generate derives template vars from input ids, so repointing consumers would have broken chapter_outline.md and chapter_state.md silently. 30 -> 31 nodes; the reduction to pay for it is the chapter_outline collapse (a deterministic split of the now-labelled `#### Beat N` headings), which is planned and not yet built.",
   "_comment_v0_17_0": "schemas/scene_outline.schema.json now DECLARES speechOverflowSec. plan.chapter_merge writes that field (chapterMerge.ts:499) on any section whose dialogue needs more time than the clip ceiling, but the schema was additionalProperties:false and did not list it -- so the merge wrote a field its own output schema forbade and the whole run died with \"/sections/N must NOT have additional properties\". REPRODUCED against a real 46-section project: under the old 10.83s ceiling exactly sections [7,9,11,12,23,31,32,33,36,37] overflowed, character-for-character the reported error. It only bites DIALOGUE-HEAVY films -- a section that never overflows never gets the field, which is why a 7-section test story with 4 short lines passed and a 46-section talky one failed. That was a hole in test coverage, not a property of how the run was launched. Paired with the dhee-runner-story-chapters fix raising H3_GRID_CEILING_FRAMES 260 -> 362, overflow on that project drops from 10 sections to 2, and the 2 that remain are now legal.",
-  "_comment_v0_18_0_no_upscale": "The upscale pass is GONE and its dependency declarations are removed with it. The graph ends scene_clip -> final_video (ffmpeg.concat). The node itself had already been dropped, but dependencies.runners/runnerPackages still declared comfy.ltx_upscale, so every install of this bundle pulled a runner nothing used and the v0.12.0/v0.14.0 comments still described a stage that does not run. Founder call 2026-08-08: the pass is not worth its cost here -- H3 already renders at its native 1344x768 (the resolution input's 'native'), so a generative re-upscale spends GPU re-synthesising pixels that were never downsampled. Keep the historical v0.12.0/v0.14.0 notes below for the VSR->LTX reasoning, but read them as history: neither stage is in the graph."
+  "_comment_v0_18_0_no_upscale": "The upscale pass is GONE and its dependency declarations are removed with it. The graph ends scene_clip -> final_video (ffmpeg.concat). The node itself had already been dropped, but dependencies.runners/runnerPackages still declared comfy.ltx_upscale, so every install of this bundle pulled a runner nothing used and the v0.12.0/v0.14.0 comments still described a stage that does not run. Founder call 2026-08-08: the pass is not worth its cost here -- H3 already renders at its native 1344x768 (the resolution input's 'native'), so a generative re-upscale spends GPU re-synthesising pixels that were never downsampled. Keep the historical v0.12.0/v0.14.0 notes below for the VSR->LTX reasoning, but read them as history: neither stage is in the graph.",
+  "_comment_v0_23_0_krea2_plates": "Anchor plates move from Z-Image to KREA2 (founder call 2026-08-08: Krea2 produces better characters, especially dark-fantasy ones). Measured head-to-head on a single hard prompt — a hooded figure whose robe frays into hundreds of individual root tendrils, face held in shadow — same seed, same 832x1216 geometry: krea2_turbo_fp8 at 8 steps vs zit_turbo_stableyogi at 9. Krea2 is ~2.5x slower per plate (16.1s vs 6.5s at 1MP) and that is accepted: a plate is generated once per character and then reused by every shot in the film, so identity quality is worth far more here than generation speed. ALL THREE anchor nodes moved together, not just characters — plates from two different models do not share a look, and H3 receives them side by side as references for the same frame. NOTE a step sweep found more sampling does NOT buy detail on either model (Z-Image scored LOWER at 28 steps than at 9), so the plate quality ceiling is the model, not the schedule."
 }
