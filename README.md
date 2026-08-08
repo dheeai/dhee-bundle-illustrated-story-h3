@@ -52,7 +52,7 @@ marked and told what to do instead, rather than given a plausible-looking URL.
 ([tutorial](https://docs.comfy.org/tutorials/video/minimax/minimax-h3)), and it
 is the version this bundle was built against.
 
-### Custom node packs — there are only two
+### Non-H3 custom node packs
 
 | pack | provides | install |
 |---|---|---|
@@ -72,17 +72,15 @@ seed, which is why the upscale pass is seconds rather than minutes and is
 deterministic. On anything that is not an RTX card, `scene_upscaled` has no
 fallback; drop the node.
 
-**Everything else is native ComfyUI, including the two that look like they should
-not be.** `MiniMaxH3ReferenceToVideo` is core
-(`comfy_extras/nodes_minimax_h3.py`) and so is `EasyCache`
-(`comfy_extras/nodes_easycache.py`) — neither needs a pack, and both are present
-in 0.30.0. The rest are long-standing core nodes and come with any current
-ComfyUI: `PrimitiveStringMultiline`, `LoadVideo`, `GetVideoComponents`,
-`CreateVideo`, `SaveVideo`, `VAEDecodeAudio`, `ModelSamplingAuraFlow`,
-`EmptySD3LatentImage`, `LoraLoaderModelOnly`, `RandomNoise`, `BasicGuider`,
-`BasicScheduler`, `KSamplerSelect`, `SamplerCustomAdvanced`. The three
-`CLIPLoader` types the workflows select — `minimax`, `krea2`, `lumina2` — are all
-in 0.30.0's type enum.
+`MiniMaxH3ReferenceToVideo` itself is native ComfyUI
+(`comfy_extras/nodes_minimax_h3.py`). The canonical founder-tested H3 graph also
+expects `PathchSageAttentionKJ`, `MiniMaxH3Cache`, and
+`ModelPreviewOverrideKJ`; those exact node classes are already registered on the
+5090 where the supplied graph was validated. The remaining graph nodes are
+standard ComfyUI nodes: `LoadImage`, `CreateVideo`, `SaveVideo`,
+`VAEDecodeAudio`, `RandomNoise`, `BasicGuider`, `BasicScheduler`,
+`KSamplerSelect`, and `SamplerCustomAdvanced`. The three `CLIPLoader` types the
+bundle selects — `minimax`, `krea2`, `lumina2` — are in 0.30.0's type enum.
 
 ### Model files
 
@@ -91,7 +89,7 @@ Four workflows, four model sets. `rtx_vsr_video.json` needs none.
 | file | goes in | source | verified? |
 |---|---|---|---|
 | **`minimax_h3_r2v.json`** — `scene_clip` | | | |
-| `minimax_h3_ref2va_pruned_nvfp4.safetensors` | `models/diffusion_models/` | [lilcheaty/MiniMax-H3-NVFP4](https://huggingface.co/lilcheaty/MiniMax-H3-NVFP4) (repo root) | **VERIFIED** — exact filename, 12.5 GB. Community requant, not Comfy-Org. Read the caveat below. |
+| `minimax_h3_ref2va_pruned_int8_convrot.safetensors` | `models/diffusion_models/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/diffusion_models) | **VERIFIED** — exact publisher filename; founder-tested on the 5090. |
 | `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | `models/text_encoders/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/text_encoders) | **VERIFIED** — 15.7 GB |
 | `minimax_h3_video_vae_fp16.safetensors` | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/vae) | **VERIFIED** — 5.21 GB |
 | `minimax_h3_audio_vae_fp32.safetensors` | `models/vae/` | [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/vae) | **VERIFIED** — 605 MB |
@@ -108,33 +106,13 @@ Four workflows, four model sets. `rtx_vsr_video.json` needs none.
 
 ### The four things that are not clean
 
-**1. The H3 diffusion model is a community requant, and the numbers in this
-README were not measured on it.** `minimax_h3_ref2va_pruned_nvfp4.safetensors`
-exists at exactly that name in `lilcheaty/MiniMax-H3-NVFP4`, but **Comfy-Org's
-own MiniMax-H3 repo has no nvfp4 diffusion model at all** — its
-`diffusion_models/` holds only `bf16`, `int8_convrot`, `pruned_fp8_scaled` and
-`pruned_int8_convrot`, for each of `fl2va` and `ref2va`. The nvfp4 build is
-doubly quantized (bf16 → int8_convrot → nvfp4) by a third party, its own README
-says it was spot-checked on three matched seeds rather than evaluated properly,
-and **native nvfp4 dispatch needs a Blackwell GPU** (50-series, RTX PRO 6000,
-B200); on older cards the format is emulated, so the file is not a speedup there.
-
-If you would rather not take that on, use
-**`minimax_h3_ref2va_pruned_int8_convrot.safetensors`** from
-[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/diffusion_models)
-(21 GB) and change `UNET.inputs.unet_name` in your copy of
-`workflows/minimax_h3_r2v.json`. That is Comfy's own prescribed R2V file, it is
-what Comfy's tutorial documents, and **this bundle previously ran on exactly
-that file** — every measurement in the probe and in the comparison table further
-down was taken on it. So it is a proven substitution rather than a guess, and it
-is arguably the better default: the int8 weights already dispatch to native
-kernels, so there is no dequantise-to-bf16 tax to escape. Keep
-`weight_dtype: default` either way — the fp8 options would re-cast an
-already-quantised model.
-
-The reproducibility gap this leaves is real and worth stating plainly: the
-workflow as committed names weights that the model's own publisher does not
-distribute, and nothing in this repo has been benchmarked on them.
+**1. The H3 diffusion model follows the founder-tested 5090 graph.** The active
+workflow uses **`minimax_h3_ref2va_pruned_int8_convrot.safetensors`** from
+[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3/tree/main/diffusion_models),
+with `weight_dtype: default`. This is the publisher-provided R2V model, not the
+FL2V text/image-to-video model and not a third-party requant. Keep the exact
+filename: workflow validation fails immediately when the installed model name
+does not match.
 
 **2. `krea2_turbo_fp8` and `krea2_turbo_fp8_scaled` are genuinely different
 files.** Comfy-Org/Krea-2 ships `krea2_turbo_fp8_scaled.safetensors`
@@ -192,11 +170,12 @@ This is a 32 GB-class NVIDIA box, and a film is an afternoon.
   12.25s H3 scene to **1920×1080 in 12 seconds**, audio preserved. That is what
   makes "render cheap, upscale after" a live option rather than a slogan.
 
-All of the above was measured on the **int8 + `beta`** graph
+The historical timings above were measured on an earlier **int8 + `beta`** graph
 (`dhee-cofounder/artifacts/h3-r2v-probe/README.md`,
-`artifacts/rtx-vsr-probe/out/results.json`). The committed workflow now uses
-nvfp4 + `EasyCache` + `bong_tangent`, none of which those runs cover, so treat
-the timings as the right order of magnitude and the fidelity as unmeasured.
+`artifacts/rtx-vsr-probe/out/results.json`). The active workflow is now the
+founder-tested INT8 + `MiniMaxH3Cache` + `simple` graph, so treat those historical
+timings as order-of-magnitude context rather than a benchmark of the active
+recipe.
 
 ## The prompt stage is the interesting part
 
@@ -233,21 +212,23 @@ by appearance so prose and plates agree.
 
 ## Render recipe
 
-`workflows/minimax_h3_r2v.json` is ComfyUI's stock `video_minimax_h3_r2v`
-template with the node ids made readable and three helper nodes removed
-(`ResolutionSelector`, `ComfyMathExpression`, `PrimitiveFloat`) — the runner
-computes width/height/length itself and writes them straight onto the H3 node.
-It also rebuilds the node's `ref_images` autogrow group: every
-`ref_images.ref_image_<N>` dotted key is discarded and re-created, one per
-resolved plate, each fed by a `LoadImage` the runner appends.
+`workflows/minimax_h3_r2v.json` is the founder-tested API graph copied from the
+5090 recipe. Its compute chain is the publisher INT8 R2V UNET →
+`PathchSageAttentionKJ(auto)` → `MiniMaxH3Cache` → preview override/guider, with
+`res_multistep`, `simple`, and 20 steps. The runner writes width, height, length,
+prompt, seed, cache settings, and scheduler directly onto those nodes. The two
+flat template references (`ref_image_0` and `ref_image_1`) are intentional:
+before inserting resolved plates, the runner removes both flat and dotted
+reference inputs and injects a fresh dotted `ref_images.ref_image_<N>` group.
 
 Defaults, all matching the node's own reported schema:
 
 - **1344×768** — H3's native geometry (768 short edge, capped 768×1344, /32)
 - **`length` on the 17k+5 grid**, 124 (≈5s) to 362 (≈15.08s); the node itself
   declares `step: 17` and a tooltip reading *"trained range is ~124-362"*
-- **`res_multistep` + `beta`**, 20 steps — `beta` over the stock template's
-  `simple` is Comfy's own recommendation for reference-heavy prompts
+- **`res_multistep` + `simple`**, 20 steps — the founder-tested fast scheduler
+- **`MiniMaxH3Cache`** — threshold `0.03`, active from 15%–90%, at most one
+  reused step (`max_steps: 1`)
 - **`ref_image_size: "match"`** — scales references to the generation
   resolution. `"max"` preserves a 2048px short edge for stronger identity but
   is several times slower, since reference tokens ride through every step.
@@ -257,17 +238,15 @@ Models required on the box — the H3 set only; see
 workflow, download sources, and the install paths:
 
 ```
-minimax_h3_ref2va_pruned_nvfp4.safetensors          (diffusion, ref2va — NOT the fl2va t2v/i2v model)
+minimax_h3_ref2va_pruned_int8_convrot.safetensors   (diffusion, ref2va — NOT the fl2va t2v/i2v model)
 qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors        (CLIP, type "minimax")
 minimax_h3_video_vae_fp16.safetensors
 minimax_h3_audio_vae_fp32.safetensors
 ```
 
-The diffusion entry tracks whatever `workflows/minimax_h3_r2v.json` currently
-names, which is the nvfp4 build. Every timing in this README was measured on the
-`pruned_int8_convrot` weights this graph used previously — that file is still the
-Comfy-Org-official choice and a proven substitution if you would rather not run a
-third-party requant. The Requirements section covers the trade-off.
+The diffusion entry is the exact publisher INT8 filename used by the active
+founder-tested workflow. Do not replace it with an NVFP4 or FL2V model when
+reproducing this recipe; that changes the tested compute contract.
 
 ## Stateful characters
 
@@ -331,10 +310,10 @@ Two things follow, and they matter when tuning:
 Most of H3's per-call disadvantage is step COUNT, not the model: LTX's chain
 carries a DMD distillation LoRA and runs an 8-step `ManualSigmas` schedule
 while H3 ref2va is undistilled at 20 steps. If an H3 step-distillation LoRA
-appears, that gap largely closes. SageAttention is already globally enabled on
-the box, so it is not an untapped lever; `EasyCache`/`LazyCache` and step count
-are. Both carry risk on identity, which is one of the axes H3 is winning —
-measure against a known-good clip rather than assuming.
+appears, that gap largely closes. SageAttention is explicitly `auto` in the
+active graph. Cache reuse and step count still carry identity risk, which is one
+of the axes H3 is winning — measure any override against a known-good clip
+rather than assuming.
 
 ## Known limitations / open items
 

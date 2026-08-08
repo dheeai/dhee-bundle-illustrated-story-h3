@@ -16,6 +16,18 @@ Story bible — the canonical visual identity of everything in the story:
 Shared art style (obey it; end your prompt with its "Style suffix" line):
 {{art_style}}
 
+## LIRA authoring pass
+
+Before writing, deconstruct the canonical location and art-style inputs, then
+diagnose ambiguity in depth, materials, habitual light, palette and accidental
+foreground subjects. Develop concise natural prose from the source-derived
+palette, observable architecture, physical materials, surface finish and
+direction and quality of light. Keep aspect ratio and resolution as platform
+fields in the JSON, never as prompt prose. Use positive descriptions for the
+desired empty setting rather than a keyword stack. Forbid accidental text, labels,
+and watermarks, extra people or animals, invented architecture and redesigned
+identity details.
+
 For location id: {{item_id}} — find it in the `locations` array above and write
 ONE text-to-image prompt for a clean setting plate of THIS place, and only this
 place:
