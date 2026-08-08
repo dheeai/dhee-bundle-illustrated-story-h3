@@ -266,6 +266,16 @@ wordless shots are correct.
     Add the bible id here at the same moment you write it into the prose. Never
     invent one that is not in the bible.
 
+  **Something an EARLIER beat put in play is still in play — re-declare it.**
+  This list is not a diff against the section before it; it is this section's
+  complete inventory. An object handed over, picked up, or set down two sections
+  ago and still in the character's hands, still on the table, still in shot,
+  belongs in YOUR list too. "It was already established" licenses nothing: the
+  render gate reads only this section's `entities`, so a thing that is present
+  but undeclared gets no reference plate and its plate is rejected. If your
+  prose leans on it at all — she is still eating it, he has not put it down —
+  declare it.
+
   (Measured: a section's `text` described the Courier's iron lantern while
   `entities` omitted it. The scene author downstream then staged the lantern —
   a fair reading of its own section text — and the render gate rejected the

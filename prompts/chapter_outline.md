@@ -147,6 +147,23 @@ Every section must give:
   section, so the next pass knows whose canonical look to re-inject — list
   EVERY character physically present in the beat, including anyone the speaker
   talks to.
+
+  **An object does not stop existing at a section boundary — carry it
+  forward.** Each section's `entities` is that section's COMPLETE inventory,
+  never a diff against the section before it. If a beat puts something into a
+  character's hands, onto the table, or into the frame, it stays there until the
+  story takes it away: list it again in EVERY following section where it is
+  still held, still being eaten or drunk from, still lying where it was set
+  down, still visible. The same goes for the location — a run of sections in one
+  room all name that room.
+
+  You are the ONLY pass that can do this. The next pass sees one section at a
+  time and cannot know what the previous beat left in play; the render gate,
+  further downstream, only sees what you licensed. (Measured on a real film: an
+  object handed over in one section and still in the character's hands through
+  the next several was listed only by the section that introduced it. The scene
+  author downstream staged it anyway — a fair reading of its own section's prose
+  — and its reference plate was rejected at the gate.)
 - `spokenLines`: every line spoken in THIS beat — **the spoken WORDS ONLY**, one
   array entry per utterance, in spoken order. `[]` for a `narration` section.
 
