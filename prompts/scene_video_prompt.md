@@ -31,7 +31,8 @@ as `speakerId` values when assigning a voice, never as reference or subject ids.
 Write the fields in this order:
 
 1. `spokenLines`
-2. `summary`
+2. `style`
+3. `summary`
 3. `references`
 4. `shots`
 5. `overallSoundscape`
@@ -52,6 +53,11 @@ finished film overrun. Every shot must fit inside it.
 (`scene_detail.shots[].dialogue`). If those shots carry no dialogue, it is `[]`
 and nobody speaks. Never pull in a line because it belongs to the story — a line
 staged twice is spoken twice in the finished film.
+
+`style` is one or two sentences of VISUAL STYLE taken from the supplied art
+style — medium, palette, light quality, finish. The runner emits it immediately
+before `[Shot 1]`, the one place the official guide allows a style opening. Put
+no action, no character and no camera in it.
 
 `purpose` is one sentence naming the single story beat this scene lands.
 `summary` is a short English paragraph beginning with a task-type prefix such as
@@ -155,7 +161,11 @@ Each reference has:
 - `id`: the exact plain story-bible id; never invent a state id.
 - `type`: exactly `character`, `object` or `location`.
 - `appearsAs`: a concise visual description of the current visible state.
-- `job`: the concrete identity, prop or environment job this plate controls.
+- `job`: what this plate must HOLD VISUALLY — the concrete features to preserve,
+  as a lower-case noun phrase: "her face, the lava forearm texture and the
+  copper-wire hair". NOT a narrative role. "the defiant smith refusing to
+  surrender the Ember" is a character note, not a visual job, and gives the
+  renderer nothing to hold.
 - optional `retention`: one official marker: `fully_preserved`,
   `partially_preserved`, `attribute_transfer` or `weak_reference`.
 
@@ -175,7 +185,9 @@ Every shot requires:
   values are strictly increasing. The runner formats later values as
   `[Shot N] At MM:SS.mmm`.
 - `endTime`: greater than `startTime` and no greater than `duration`.
-- `composition`: framing, viewpoint, scale and where each visible subject is.
+- `composition`: framing, viewpoint, scale and where each visible subject is —
+  ONE definite answer. Never write alternatives ("in the background or
+  periphery"); the renderer cannot choose between them.
 - `acting`: the CHARACTERS in this shot — see below. A character is in the shot
   if and only if they have an entry here.
 - `sceneryIds`: the OBJECT and LOCATION ids visible in this shot. Never a
@@ -183,6 +195,9 @@ Every shot requires:
 - `action`: the state change, including what is true at the beginning and end.
 - `cameraMotion`: exactly one controlled H3 term from the schema enum. Use
   `Static Shot` when the camera deliberately holds.
+- optional `cameraAmplitude` (`small`/`large`) and `cameraSpeed` (`slow`/`fast`):
+  the guide's other two camera dimensions. Omit them for medium amplitude and
+  normal speed. The runner writes all three as natural English inside the shot.
 - `sound`: physical, shot-synchronous sound for this beat.
 - optional `transition`: for later shots, say what the cut reveals and why the
   new information is different. Omit it on the first shot unless needed.

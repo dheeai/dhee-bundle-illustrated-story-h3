@@ -4,6 +4,7 @@
   "additionalProperties": false,
   "required": [
     "spokenLines",
+    "style",
     "summary",
     "references",
     "shots",
@@ -22,6 +23,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "style": {
+      "type": "string",
+      "minLength": 40,
+      "description": "One or two sentences of VISUAL STYLE only — medium, palette, light quality, finish — taken from the supplied art style. The runner emits it immediately before [Shot 1], which is where the official full-reference guide puts the style opening. No action, no character, no camera here."
     },
     "summary": {
       "type": "string",
@@ -56,11 +62,11 @@
           },
           "appearsAs": {
             "type": "string",
-            "description": "Short visual description of the current visible reference. Do not write a slot number."
+            "description": "Short visual description of the current visible reference, as a lower-case noun phrase. The runner drops it into '<Subject N> is ___ in <Picture N>.'"
           },
           "job": {
             "type": "string",
-            "description": "What this reference must control in the generated scene, written as a concrete visual job. Do not write a slot number."
+            "description": "What this plate must HOLD VISUALLY, as a lower-case noun phrase — the concrete features to preserve ('her face, the lava forearm texture and the copper-wire hair'). NOT a narrative role: 'the defiant smith refusing to surrender the Ember' tells the renderer nothing to preserve. The runner drops it into 'Follow it for ___.'"
           },
           "retention": {
             "type": "string",
@@ -106,7 +112,7 @@
           },
           "composition": {
             "type": "string",
-            "description": "Framing, viewpoint, scale and subject placement."
+            "description": "Framing, viewpoint, scale and where each visible subject is — ONE definite answer. Never offer alternatives ('in the background or periphery'): the renderer cannot choose, so an either/or becomes a smear."
           },
           "acting": {
             "type": "array",
@@ -195,13 +201,29 @@
               "Roll Counterclockwise"
             ]
           },
+          "cameraAmplitude": {
+            "type": "string",
+            "enum": [
+              "small",
+              "large"
+            ],
+            "description": "Optional second camera dimension (base guide 4.3). Omit for medium amplitude."
+          },
+          "cameraSpeed": {
+            "type": "string",
+            "enum": [
+              "slow",
+              "fast"
+            ],
+            "description": "Optional third camera dimension (base guide 4.3). Omit for normal speed."
+          },
           "sound": {
             "type": "string",
             "description": "Physical, shot-synchronous sound only. Keep scene-wide ambience in overallSoundscape."
           },
           "transition": {
             "type": "string",
-            "description": "For later shots, describe the cut and the new information it reveals. Omit on the first shot unless a first-shot transition is genuinely needed."
+            "description": "For later shots, the cut written as a lower-case clause that continues \"At 00:04.000, …\", ideally opening with a documented cut phrase (the shot cuts to / the camera cuts to / the shot transitions to). Say what NEW information the cut reveals. The runner repairs capitalisation and supplies the cut verb if missing."
           },
           "dialogue": {
             "type": "array",

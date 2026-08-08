@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "The multi-view character identity sheet prompt. This node ran UNSCHEMA'D until v0.19.0, and the cost was a silent identity failure: on a real film (ember_wright) the LIRA pass returned nothing but the art style's suffix line for one of two characters -- 'Cinematic photoreal film still, heavy impasto texture, ... no line art.', 202 characters, with no character in it at all. Nothing rejected it. comfy.tti duly rendered a moody empty frame, sheetPanels:4 cropped that frame into 'views' v0 and v3, and H3 received two meaningless crops as that character's identity reference in every scene of the film. The other character's prompt, from the same pass on the same model, was a correct 1448-character four-view sheet. So this is variance the node has to survive, not a prompt that can be trusted. NOTE deliberately no `pattern` anywhere: llama.cpp compiles this schema to a GBNF grammar and its converter rejects regex shorthand classes, which is what made every LOCAL run of this bundle impossible until v0.18.0 -- minLength and enums are the constraints that are safe here — maxLength is NOT (see imagePrompt).",
+  "required": [
+    "imagePrompt",
+    "aspectRatio",
+    "generationMode"
+  ],
+  "properties": {
+    "imagePrompt": {
+      "type": "string",
+      "minLength": 600,
+      "description": "The complete four-view identity sheet prompt: one horizontal row of four views (full-body front, profile, three-quarter, medium close-up) of ONE character on a single continuous neutral backdrop, describing their face, build, hair, wardrobe and signature carried items concretely enough that every later shot can hold the identity, and ending with the art style's Style suffix line verbatim. Roughly 5-8 sentences. NO maxLength: llama.cpp expands a maxLength into that many optional repetitions in the GBNF grammar, and anything above ~1000 fails to compile — measured, maxLength 1000 OK / 2000 FAIL, while minLength alone is fine at any size. The runaway case is capped by the node's maxTokens instead. The floor of 600 characters is what stops a style-suffix-only answer from passing: the failure this schema exists for was 202 characters, and a correct sheet from the same run was 1448."
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": [
+        "16:9"
+      ],
+      "description": "Always 16:9 — the sheet is one horizontal row of four views."
+    },
+    "generationMode": {
+      "type": "string",
+      "enum": [
+        "text_to_image"
+      ],
+      "description": "Always text_to_image — the base anchor has no reference image to edit from."
+    }
+  }
+}
