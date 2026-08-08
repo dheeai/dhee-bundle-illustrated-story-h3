@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.26.0",
+  "version": "0.29.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -109,7 +109,7 @@
       "id": "resolution",
       "kind": "project",
       "field": "resolution",
-      "default": "native",
+      "default": "540p",
       "label": "Render resolution",
       "control": "select",
       "options": [
@@ -131,14 +131,6 @@
         }
       ],
       "placeholder": "'native' (1344x768) is H3's own geometry and the best quality. Cost scales as ~pixels^1.3, so '480p' (832x480) renders ~3.7x faster -- use it to iterate on a story, then re-render the final cut at native. Accepts an explicit '<w>x<h>' too."
-    },
-    {
-      "id": "protagonist_photo",
-      "kind": "file",
-      "path": "inputs/protagonist_photo.png",
-      "required": false,
-      "label": "Protagonist photo (optional)",
-      "description": "A real photograph of the lead. Supply it and H3 uses this face on EVERY clip instead of the generated character anchor, so the protagonist is a specific real person rather than an invented one. Leave empty to use the anchors the bundle generates from the story bible. One clear, well-lit, front-facing head-and-shoulders frame works best; H3 scales it to the render's pixel area, so a huge file buys nothing."
     },
     {
       "id": "location_photo",
@@ -163,7 +155,7 @@
       "path": "inputs/character_photo_1.png",
       "required": false,
       "label": "Character photo 1 (optional)",
-      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+      "placeholder": "A real face. Name them below and this photo is used instead of an invented one — no plate is generated."
     },
     {
       "id": "character_photo_1_name",
@@ -171,9 +163,9 @@
       "field": "character_photo_1_name",
       "required": false,
       "default": "",
-      "label": "…is which character?",
+      "label": "Who is character photo 1?",
       "control": "text",
-      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
+      "placeholder": "The name the story uses, e.g. Meera"
     },
     {
       "id": "character_photo_2",
@@ -181,7 +173,7 @@
       "path": "inputs/character_photo_2.png",
       "required": false,
       "label": "Character photo 2 (optional)",
-      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+      "placeholder": "A real face. Name them below and this photo is used instead of an invented one — no plate is generated."
     },
     {
       "id": "character_photo_2_name",
@@ -189,9 +181,9 @@
       "field": "character_photo_2_name",
       "required": false,
       "default": "",
-      "label": "…is which character?",
+      "label": "Who is character photo 2?",
       "control": "text",
-      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
+      "placeholder": "The name the story uses, e.g. Meera"
     },
     {
       "id": "character_photo_3",
@@ -199,7 +191,7 @@
       "path": "inputs/character_photo_3.png",
       "required": false,
       "label": "Character photo 3 (optional)",
-      "placeholder": "A real face for one of the story's characters. Name them below and this photo is used instead of an invented one — the plate is not generated at all."
+      "placeholder": "A real face. Name them below and this photo is used instead of an invented one — no plate is generated."
     },
     {
       "id": "character_photo_3_name",
@@ -207,9 +199,9 @@
       "field": "character_photo_3_name",
       "required": false,
       "default": "",
-      "label": "…is which character?",
+      "label": "Who is character photo 3?",
       "control": "text",
-      "placeholder": "The character's name as the story uses it, e.g. Ramesh"
+      "placeholder": "The name the story uses, e.g. Meera"
     }
   ],
   "goal": "final_video",
@@ -221,6 +213,14 @@
       "inputs": [
         {
           "from": "story_input",
+          "usage": "context"
+        },
+        {
+          "from": "target_duration",
+          "usage": "context"
+        },
+        {
+          "from": "seconds_per_1000_words",
           "usage": "context"
         }
       ],
@@ -234,7 +234,10 @@
           "outputPath": "plans/story.md",
           "storyInput": "story_input",
           "promptTemplate": "prompts/story.md",
-          "tier": "heavy"
+          "tier": "heavy",
+          "targetDurationInput": "target_duration",
+          "secondsPer1000WordsInput": "seconds_per_1000_words",
+          "_comment_v0_28_0_write_out_length": "v0.28.0 The premise write-out now knows how long the film is. plan.story_prepare only ever interpolated {{story_input}}, and prompts/story.md told it to 'let the story's own shape decide its length' -- so a 15-second film and a ten-minute film got byte-identical instructions. Measured: a 98-word premise for a 15s film came back at 758 words, roughly 9x the ~83 words that 15s buys at 180s/1000 words. Everything downstream then compresses or truncates it. The runner (>=0.7.0) derives a word budget from these two inputs and hands the write-out a hard range; when target_duration is 'auto' there is no budget and the open-ended instruction stands, which is right -- 'auto' means the story's length decides the film's, not the other way round."
         }
       },
       "displayCapability": "story.prose"
@@ -1446,15 +1449,35 @@
           "usage": "context"
         },
         {
-          "from": "protagonist_photo",
-          "usage": "reference"
-        },
-        {
           "from": "location_photo",
           "usage": "reference"
         },
         {
           "from": "render_steps",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_1",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_1_name",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_2",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_2_name",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_3",
+          "usage": "context"
+        },
+        {
+          "from": "character_photo_3_name",
           "usage": "context"
         }
       ],
@@ -1511,12 +1534,6 @@
           "_comment_duration_cap": "v0.9.0: CLIP_CAP raised 8 -> 10s at the founder's request, and propagated to every place that encodes it (chapter_outline divisor, secondsPerShot 5, scene_detail shot max, scene_video_prompt duration max). COST WARNING, measured: a duration sweep at 720p found H3's marginal cost jumps ~3.5x between 8.00s (192 frames, 288s) and 9.42s (226 frames, 573s). 10s snaps to 243 frames (10.13s), which is PAST that knee, so a clip costs roughly 2x an 8s one under the cache settings measured at that time. 8.00s remains the cheapest point per second of finished video; 10s is a deliberate quality/pacing choice, not an efficiency one. [CORRECTED v0.13.0: the '~3.5x marginal cost jump between 8.00s and 9.42s' cited here is RETRACTED as measurement noise -- re-measured with fixed steps, 192f->226f came out 306->491s against the original sweep's 288->573s, on a box showing 10-21% run-to-run variance. Real cost is a smooth ~frames^1.4. The clip ceiling is now 15.08s (362f); the pacing divisor deliberately stays UNDER it at 8 so sections default short and only speech-heavy ones grow. The historical reasoning below is kept because the REGRESSIONS it describes were real.]",
           "pinnedRefs": [
             {
-              "input": "protagonist_photo",
-              "type": "character",
-              "appearsAs": "the protagonist, exactly as photographed",
-              "job": "her face, bone structure and likeness, held identical in every shot of every scene"
-            },
-            {
               "input": "location_photo",
               "type": "location",
               "appearsAs": "the real primary location, exactly as photographed",
@@ -1529,7 +1546,23 @@
           "maxSteps": 10,
           "_comment_v0_20_0_turbo600": "workflows/minimax_h3_turbo_r2v.json is now the founder's ref2va-H3-fast_turbo600_working export, integrated verbatim apart from the three things the runner owns (references, prompt, SaveVideo prefix). It brings the turbo600 LoRA (minimax_h3_turbo_v4_step600_ema_pruned_comfy via rgthree Power Lora Loader), MiniMaxH3SigmaShift 12/3, and the explicit sageattn_qk_int8_pv_fp16_triton kernel. ImageResizeKJv2 was dropped because it draws width/height from ResolutionSelector, which the runner DELETES (it sets geometry on the r2v node), leaving a dangling link; the runner sizes references via ref_image_size anyway. There is NO MiniMaxH3Cache in this graph, so the cache options were removed rather than left inert. STEPS: 4 is the LoRA's distilled count and the default everywhere; this bundle alone scales 4/6/8/10 with scene complexity (cuts, references, dialogue lines, duration) because a 15s four-cut two-hander is not the same problem as an 8s locked single. Measured on the founder's own graph, 4 vs 8 steps was 88.9s vs 160.5s -- 45% faster -- with audio identical within noise (mean -18.7 vs -18.4 dB, HF -38.5 vs -39.4 dB).",
           "stepsInput": "render_steps",
-          "_comment_reroll": "seed is the BASE; the runner uses (seed + hash(itemId)) so each scene differs but is reproducible. To re-roll ONE bad clip today you must bump this base, which shifts every scene's lineage — a poor mechanism. A per-project `seed` field (same pattern as render_steps/resolution) would make it a one-line project change instead."
+          "_comment_reroll": "seed is the BASE; the runner uses (seed + hash(itemId)) so each scene differs but is reproducible. To re-roll ONE bad clip today you must bump this base, which shifts every scene's lineage — a poor mechanism. A per-project `seed` field (same pattern as render_steps/resolution) would make it a one-line project change instead.",
+          "_comment_v0_27_0_protagonist_photo_removed": "v0.27.0 REMOVED protagonist_photo. It and the cast-photo slots were two ways to do the same thing and the operator could not tell them apart. The slots win: they SKIP plate generation (comfy.tti copies the photo instead of calling Comfy) and they work for any number of characters, matched by name. protagonist_photo was a pinnedRef -- it attached one face to EVERY clip whether or not that character was in the scene, and still paid to generate the plate it then displaced. location_photo is kept: it is the only way to pin a real PLACE, has no cast-slot equivalent, and a single background per clip is exactly the right semantics for it.",
+          "castPhotoInputs": [
+            {
+              "photoInput": "character_photo_1",
+              "nameInput": "character_photo_1_name"
+            },
+            {
+              "photoInput": "character_photo_2",
+              "nameInput": "character_photo_2_name"
+            },
+            {
+              "photoInput": "character_photo_3",
+              "nameInput": "character_photo_3_name"
+            }
+          ],
+          "_comment_v0_29_0_photo_beats_description": "v0.29.0 A supplied photo now also silences the INVENTED description. The cast-photo slots made the PLATE real, but story_bible had already invented an appearance for that character from the prose, and it reaches H3 as references[].appearsAs -- so H3 got a photograph AND a paragraph describing a different person's hair, skin and clothing, which blend rather than cancel. Measured on the first desktop run: a real photo of Meera arrived beside 'pale complexion, oval face, long black hair pulled back loosely, simple white cotton kurta'. The runner (>=0.6.5) rewrites appearsAs for any character matching a cast-photo name to defer to the image. `job` is untouched -- it names which FEATURES to follow, which is still what we want."
         }
       },
       "displayCapability": "shot.video"
