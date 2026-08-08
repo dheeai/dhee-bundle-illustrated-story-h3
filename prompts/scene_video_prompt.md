@@ -53,7 +53,8 @@ Write the fields in this order:
 11. `shotStructure`
 12. `renderComplexity`
 13. `performance`
-14. optional `continuationAnchor`
+14. `continuationAnchor`
+15. `continuationFrom` — omit ONLY on the first scene of the film
 
 `duration` is the length of this one H3 call, between 5 and 15.08 seconds. Set
 it to the SUM of this section's planned shot durations (`scene_detail.shots[].duration`)
@@ -294,9 +295,59 @@ subtitles, extra people, anachronistic props, soft dissolves or a redesigned
 reference. The graph has no negative-conditioning input, so the runner writes
 these directions into the compiled positive prompt.
 
-`continuationAnchor` is optional. When present, state the end-of-scene
-appearance, last action, environment/light and important prop state so a later
-scene can continue cleanly. Omit it when no continuation is needed.
+## The continuity chain — `continuationFrom` and `continuationAnchor`
+
+A film is not a set of independent scenes. Every scene inherits a room from the
+one before it, and every scene hands one on. These two fields ARE that chain,
+and they are the difference between a film and four clips that happen to share
+a cast.
+
+The previous scene's finished prompt is supplied to you as
+`{{scene_video_prompt}}`. It is an ARRAY holding the immediately preceding scene
+and nothing else, so the previous scene's whole JSON is at `[0].content`, and
+the ledger you need is `[0].content.continuationAnchor`. On the film's first
+scene the array is EMPTY — that is the only case in which you omit
+`continuationFrom`.
+
+**`continuationFrom` is what you INHERIT.** Read the previous scene's
+`continuationAnchor` and copy it into `continuationFrom`. Then OPEN YOUR FIRST
+SHOT ON THAT STATE — the same landmarks in the same parts of the frame, the same
+light, everyone standing where they were left. You do not need to write the
+inherited state into your shot prose; the renderer states it for you, before
+`[Shot 1]`. What you must do is not CONTRADICT it.
+
+Three things follow from this, and each of them is a defect that shipped:
+
+- **Someone in `offStage` is not in the room.** If they are in your scene, the
+  audience must SEE THEM ARRIVE — walking in, opening a door, stepping out of
+  the dark. A character who is simply present in your first frame after being
+  off stage is the single most visible continuity break there is. Write the
+  arrival as a beat with its own seconds.
+- **A prop keeps the state it was left in.** If the previous scene poured the
+  tea, the tea is poured. Do not reset it, do not re-pour it, and above all do
+  not assert the opposite.
+- **A landmark keeps its part of the frame.** If the stove was in the left
+  third, it is in the left third. If your shot needs a different angle, MOVE THE
+  CAMERA and say so — do not silently re-place the furniture.
+
+If this scene genuinely does break from the previous one — a time skip, a new
+location, a reset — that is legitimate, but you must DECLARE it: set
+`continuationFrom.hardCut` to the break ("two hours later, the same kitchen")
+and fill the other fields with the NEW opening state. Undeclared discontinuity
+is the defect; declared discontinuity is editing.
+
+**`continuationAnchor` is what you HAND ON.** It is required on every scene,
+including the last. Describe the state at the moment your final frame ends:
+every landmark and where it sits on screen, everyone visible and where they
+stand, everyone off stage and why, the light in force, and the state of every
+prop that was handled. Write it for a reader who has not seen your scene — the
+next scene's author is exactly that reader, and this is all they get.
+
+Both fields name characters by their `references[]` id, never by prose
+description. And in `offStage`, state only WHERE someone is and WHY — never that
+they speak, call, whisper or answer. A voice described with no words in
+`spokenLines` synthesises speech-shaped noise, and this field is a common way to
+introduce one by accident.
 
 ## Final checks before returning JSON
 

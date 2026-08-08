@@ -16,7 +16,8 @@
     "purpose",
     "shotStructure",
     "renderComplexity",
-    "performance"
+    "performance",
+    "continuationAnchor"
   ],
   "properties": {
     "spokenLines": {
@@ -385,8 +386,248 @@
       }
     },
     "continuationAnchor": {
-      "type": "string",
-      "description": "Optional end-state anchor for a later continuation: subject appearance, last action, environment/light and prop state."
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The state this scene ENDS in, written so the NEXT scene can open on it. Required. This is the forward half of the continuity chain — it is not rendered into this scene.",
+      "required": [
+        "fixedLandmarks",
+        "characterPositions",
+        "lightingBaseline"
+      ],
+      "properties": {
+        "fixedLandmarks": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Fixed set features and where they sit ON SCREEN. 'the stove is in the kitchen' is useless; 'the stove is in the left third against the back wall' is the entry, because only that survives being handed to the next scene.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "screenPosition"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The landmark, named as it appears: 'the gas stove', 'the wooden table', 'the doorway to the hallway'."
+              },
+              "screenPosition": {
+                "type": "string",
+                "description": "Where it sits in frame: 'in the left third against the back wall', 'across the centre-bottom foreground'."
+              }
+            }
+          }
+        },
+        "characterPositions": {
+          "type": "array",
+          "description": "Everyone VISIBLE at this boundary. Must use reference ids declared in references[].",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subjectId",
+              "screenPosition",
+              "facing",
+              "pose"
+            ],
+            "properties": {
+              "subjectId": {
+                "type": "string",
+                "description": "A character id from references[]."
+              },
+              "screenPosition": {
+                "type": "string",
+                "description": "Where in frame: 'in the left third, midground'."
+              },
+              "facing": {
+                "type": "string",
+                "description": "Which way they face: 'three-quarters away from camera'."
+              },
+              "pose": {
+                "type": "string",
+                "description": "What their body is doing: 'standing at the stove, palm flat on the counter'."
+              }
+            }
+          }
+        },
+        "offStage": {
+          "type": "array",
+          "description": "Everyone NOT in frame at this boundary, so the next scene knows they must be seen to ARRIVE rather than appearing already present. State position and reason ONLY — never speech. 'she calls from the hallway' with no dialogue line synthesises voice with no words and is rejected.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subjectId",
+              "where",
+              "reason"
+            ],
+            "properties": {
+              "subjectId": {
+                "type": "string",
+                "description": "A character id from references[]."
+              },
+              "where": {
+                "type": "string",
+                "description": "Where they physically are: 'in the unlit hallway beyond the doorway'."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why they are off screen: 'she has not come in yet'. No speech verbs."
+              }
+            }
+          }
+        },
+        "lightingBaseline": {
+          "type": "string",
+          "description": "The light in force at this boundary — key/fill/rim direction and quality, plus any modifier: 'a hard cool tubelight from directly overhead, with a warm stove flame on the left'. The next scene inherits this unless it declares a change."
+        },
+        "propStates": {
+          "type": "array",
+          "description": "HANDLED props and their state at this boundary — poured, moved, held, set down. This is the field the shipped soap contradicted itself on: scene 1 ended with the tea poured and steaming and scene 2 opened asserting the cups were not yet visible.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "state"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The prop: 'the two tea cups'."
+              },
+              "state": {
+                "type": "string",
+                "description": "Its state: 'both poured and steaming, on the table'."
+              }
+            }
+          }
+        }
+      }
+    },
+    "continuationFrom": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The state this scene OPENS on, copied from the PREVIOUS scene's continuationAnchor (supplied to you as context). Omit ONLY on the first scene of the film. This is what stops a character appearing without arriving and the set moving between cuts.",
+      "required": [
+        "fixedLandmarks",
+        "characterPositions",
+        "lightingBaseline"
+      ],
+      "properties": {
+        "hardCut": {
+          "type": "string",
+          "description": "Set ONLY when this scene deliberately breaks from the previous one — a time skip, a new location, a reset: 'two hours later, the same kitchen'. Discontinuity is legitimate; UNDECLARED discontinuity is the defect. When set, describe the new opening state in the fields below rather than the inherited one."
+        },
+        "fixedLandmarks": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Fixed set features and where they sit ON SCREEN. 'the stove is in the kitchen' is useless; 'the stove is in the left third against the back wall' is the entry, because only that survives being handed to the next scene.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "screenPosition"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The landmark, named as it appears: 'the gas stove', 'the wooden table', 'the doorway to the hallway'."
+              },
+              "screenPosition": {
+                "type": "string",
+                "description": "Where it sits in frame: 'in the left third against the back wall', 'across the centre-bottom foreground'."
+              }
+            }
+          }
+        },
+        "characterPositions": {
+          "type": "array",
+          "description": "Everyone VISIBLE at this boundary. Must use reference ids declared in references[].",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subjectId",
+              "screenPosition",
+              "facing",
+              "pose"
+            ],
+            "properties": {
+              "subjectId": {
+                "type": "string",
+                "description": "A character id from references[]."
+              },
+              "screenPosition": {
+                "type": "string",
+                "description": "Where in frame: 'in the left third, midground'."
+              },
+              "facing": {
+                "type": "string",
+                "description": "Which way they face: 'three-quarters away from camera'."
+              },
+              "pose": {
+                "type": "string",
+                "description": "What their body is doing: 'standing at the stove, palm flat on the counter'."
+              }
+            }
+          }
+        },
+        "offStage": {
+          "type": "array",
+          "description": "Everyone NOT in frame at this boundary, so the next scene knows they must be seen to ARRIVE rather than appearing already present. State position and reason ONLY — never speech. 'she calls from the hallway' with no dialogue line synthesises voice with no words and is rejected.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subjectId",
+              "where",
+              "reason"
+            ],
+            "properties": {
+              "subjectId": {
+                "type": "string",
+                "description": "A character id from references[]."
+              },
+              "where": {
+                "type": "string",
+                "description": "Where they physically are: 'in the unlit hallway beyond the doorway'."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why they are off screen: 'she has not come in yet'. No speech verbs."
+              }
+            }
+          }
+        },
+        "lightingBaseline": {
+          "type": "string",
+          "description": "The light in force at this boundary — key/fill/rim direction and quality, plus any modifier: 'a hard cool tubelight from directly overhead, with a warm stove flame on the left'. The next scene inherits this unless it declares a change."
+        },
+        "propStates": {
+          "type": "array",
+          "description": "HANDLED props and their state at this boundary — poured, moved, held, set down. This is the field the shipped soap contradicted itself on: scene 1 ended with the tea poured and steaming and scene 2 opened asserting the cups were not yet visible.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "state"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The prop: 'the two tea cups'."
+              },
+              "state": {
+                "type": "string",
+                "description": "Its state: 'both poured and steaming, on the table'."
+              }
+            }
+          }
+        }
+      }
     }
   },
   "description": "Strict structured intermediate scene contract for MiniMax H3. The runner deterministically writes subject_definitions and retention_analysis from references, compiles shots and typed dialogue into detailed_description, and assembles the existing six official sections. Do not author subject-definition prose or any <Picture N> slot numbering; those are runner-owned."
