@@ -352,11 +352,28 @@ stand, everyone off stage and why, the light in force, and the state of every
 prop that was handled. Write it for a reader who has not seen your scene — the
 next scene's author is exactly that reader, and this is all they get.
 
-Both fields name characters by their `references[]` id, never by prose
-description. And in `offStage`, state only WHERE someone is and WHY — never that
-they speak, call, whisper or answer. A voice described with no words in
-`spokenLines` synthesises speech-shaped noise, and this field is a common way to
-introduce one by accident.
+### `offStage` is the field that makes entrances happen — fill it
+
+`characterPositions` lists who is VISIBLE, and those ids must be in your
+`references[]`, because a visible character needs a plate.
+
+**`offStage` is the opposite, and this is the part that is easy to get wrong.**
+It lists characters who are NOT in this scene at all — and so are deliberately
+NOT in your `references[]`, because no plate is passed for someone who is not on
+screen. Do not leave it out because you cannot find the id in your references.
+Look at the story: every named character in the film who is somewhere else right
+now belongs here, with where they are and why.
+
+A father alone on a terrace has a daughter one flight down in the stairwell. If
+you do not say so, the next scene has no way to know she must be SEEN TO COME
+UP, and it will simply open with her already standing there. That exact failure
+is why this field exists, so an empty `offStage` in a scene where someone is
+about to arrive is a defect, not a shortcut.
+
+State only WHERE someone is and WHY. Never that they speak, call, whisper or
+answer — a voice described with no words in `spokenLines` synthesises
+speech-shaped noise, and this field is a common way to introduce one by
+accident.
 
 ## Final checks before returning JSON
 
