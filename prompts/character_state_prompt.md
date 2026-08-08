@@ -37,6 +37,20 @@ Story bible — the canonical visual identity of everything in the story:
 Shared art style (obey it; end your prompt with its "Style suffix" line):
 {{art_style}}
 
+## LIRA edit discipline
+
+Deconstruct the baseline identity and the complete current appearance, then
+diagnose the one visible delta and the failure mode it could trigger. Develop a
+concise natural edit instruction with one positive change at a time and an
+explicit `PRESERVE EXACTLY` inventory for every identity, material and detail
+that must survive. Use source-derived palette and observable materials only
+where this identity-only contract permits; keep camera, scene, lighting and
+geometry in their existing structured or downstream fields. Aspect ratio and
+resolution are platform fields, never prompt prose. Use positive descriptions
+for what must be drawn, and forbid accidental text, labels, and watermarks,
+extra subjects and invented identity details. Keep the existing image-edit
+routing; do not import another product's workflow or parameters.
+
 The appearance state you are re-issuing:
 {{character_states_plan}}
 

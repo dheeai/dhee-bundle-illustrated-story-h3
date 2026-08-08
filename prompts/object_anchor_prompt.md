@@ -17,6 +17,18 @@ Story bible — the canonical visual identity of everything in the story:
 Shared art style (obey it; end your prompt with its "Style suffix" line):
 {{art_style}}
 
+## LIRA authoring pass
+
+Before writing, deconstruct the canonical object and art-style inputs, then
+diagnose ambiguity in shape, scale, construction, mounting and likely material
+drift. Develop concise natural prose from the source-derived palette,
+observable materials, surface finish, distinctive marks and physical light
+response. Keep aspect ratio and resolution as platform fields in the JSON, not
+inside the prompt prose. Use positive descriptions for the desired clean plate
+rather than a keyword stack. Forbid accidental text, labels, and watermarks,
+extra objects, invented identity details and any redesign of the canonical
+form.
+
 For object id: {{item_id}} — find it in the `objects` array above and write
 ONE text-to-image prompt for a clean identity reference plate of THIS object,
 and only this object:

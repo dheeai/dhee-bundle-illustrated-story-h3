@@ -1,71 +1,56 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "required": [
     "spokenLines",
+    "style",
     "summary",
-    "detailedDescription",
+    "references",
+    "shots",
     "overallSoundscape",
     "nonDiegeticMusic",
-    "shotStructure",
-    "references",
+    "negatives",
     "duration",
-    "purpose"
+    "purpose",
+    "shotStructure",
+    "performance"
   ],
   "properties": {
     "spokenLines": {
       "type": "array",
+      "description": "Exact spoken-word ledger copied from the owning scene plan. Keep one bare, verbatim string per line; use an empty array when nobody speaks. Do not add <d> markup or language labels here.",
       "items": {
         "type": "string"
-      },
-      "description": "FIRST FIELD ON PURPOSE. Every line spoken in this scene, copied VERBATIM from the scene plan's shots -- same words, same punctuation, same language, one array entry per line. Empty array only if nobody speaks.\nWhy it comes first: constrained decoding emits properties in schema order, so writing the lines HERE forces the exact transcription to happen once, in isolation, before any prose exists to compete for attention. Then detailedDescription only has to COPY what you already wrote a few tokens ago rather than re-find a long transliterated line inside the scene plan and retype it from memory.\nMeasured motivation: on g4-meromero every compliance failure was on a dialogue scene and the rate degraded with line length (49-char line 5/8 runs clean, 98-char line 3/7) -- the failing step is transcription, not the format rules. Reproduce each entry inside a <d>[Language] ... </d> tag in detailedDescription, with an (Sx) speaker id in front of it."
+      }
+    },
+    "style": {
+      "type": "string",
+      "minLength": 40,
+      "description": "One or two sentences of VISUAL STYLE only — medium, palette, light quality, finish — taken from the supplied art style. The runner emits it immediately before [Shot 1], which is where the official full-reference guide puts the style opening. No action, no character, no camera here."
     },
     "summary": {
       "type": "string",
-      "minLength": 60,
-      "description": "The `summary` section: ONE short English paragraph, beginning with a square-bracketed task-type prefix. For this bundle the reference plates guide generation without being concrete frames, so the prefix is normally `[reference generation]`; add ` + audio reference` only if a voice or music reference is actually supplied. Summarise the target video, its subjects and its shot flow using the `<Subject N>` labels -- do NOT introduce new reference labels here, and do not restate the plate definitions."
-    },
-    "detailedDescription": {
-      "type": "string",
-      "minLength": 1940,
-      "description": "MINIMUM 1900 CHARACTERS (~315 English words) -- this floor is enforced, not advisory. The guide asks for 350-500 words and measured g4-meromero output came in at ~206 words (1266 chars) even after the instruction was strengthened, so the length is enforced by the schema instead: llm.generate validates with ajv INSIDE its retry loop and, on failure, sends the model its own draft plus the specific error, which is a far easier task than hitting a length from cold. Do not pad -- reach the length by covering, FOR EVERY SHOT, all seven of: composition and framing; each subject's appearance AND position in frame; the environment and its light; the action as a state change (a beginning state and an end state); the camera motion; the sound in that moment; and where a referenced subject actually appears or takes effect. That is ~120-200 words per shot.\nThe `detailed_description` section -- the main body, and the only place shot-synced sound and dialogue belong. Normally 350-500 English words; do not pad to hit a count, and do let a dialogue-dense scene run long enough to fit the whole spoken timeline.\nFORMAT, from the official guide:\n  * Open with ONE OR TWO English sentences establishing the style and look, BEFORE the first shot marker.\n  * `[Shot 1]` marks the opening shot and takes NO timestamp. Every later shot is `[Shot N] At MM:SS.mmm, the shot cuts to ...` with a STRICTLY INCREASING cut time inside the duration. Use `the camera cuts to` / `the shot cuts to` / `the shot transitions to`; a cut must introduce new information about subject, space, state, viewpoint or time -- if only distance or a slight angle changes, use camera motion instead.\n  * Write camera motion as natural English inside the shot using the controlled vocabulary: Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right, Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot, Shake Slightly/Strongly, POV, Roll Clockwise/Counterclockwise -- optionally `with small amplitude` / `with large amplitude` and `at slow speed` / `at fast speed`, omitted when medium/normal. Never stack these as labels at the end of a sentence.\n  * Cite `<Subject N>` at each subject's first clear appearance and keep using the same label afterwards. NUMBER THEM IN THE ORDER YOU LIST `references[]` -- the renderer emits subject_definitions in that order and remaps your labels if routing changes it.\n  * SPEAKERS AND DIALOGUE: give each vocal source a stable `(S1)`, `(S2)` id, compound `(S1,S2)` when they speak together. Put the identifying phrase, action and delivery OUTSIDE the tag and only the language tag plus the exact words INSIDE: `<Subject 2> (S1) turns and says: <d>[English] I get off at the next station.</d>`. Preserve the authored line's words and punctuation verbatim, in its original language. For voiceover use the exact phrase `says in an off-screen voiceover` and immediately state that the character's lips remain closed. Use `<scenetrans>` on both sides of a line that crosses a cut, and `<cutoff>` when speech is truncated by the video ending.\n  * On-screen text that is genuinely visible goes in English double quotes, verbatim.\nDo NOT write ambience or audience-only score here -- those are the other two sections. Do not repeat dialogue outside `<d>`."
-    },
-    "overallSoundscape": {
-      "type": "string",
-      "description": "The `overall_soundscape` section: 1-4 English sentences in ONE paragraph summarising ambience, physical action sounds and non-verbal human sounds across the whole video -- wind, rain, traffic, footsteps, fabric, impacts, breathing, laughter, panting. Dialogue, singing and diegetic music belong in detailed_description and must NOT be repeated here. Use `N/A` only if complete silence is genuinely wanted."
-    },
-    "nonDiegeticMusic": {
-      "type": "string",
-      "description": "The `non_diegetic_music` section: 1-3 English sentences describing score the characters cannot hear. State instrumentation, speed, rhythm and dynamic change -- NOT abstract mood words and not the emotional function. Music a character can hear (radio, phone, someone singing) is diegetic and belongs in detailed_description instead. Use `N/A` when there is no score."
-    },
-    "shotStructure": {
-      "type": "string",
-      "enum": [
-        "continuous_moving",
-        "locked_single",
-        "multi_cut"
-      ],
-      "description": "THE DIRECTORIAL DECISION for this scene, made from the beat -- NOT inherited from how many shots the planner budgeted (that number is a duration split). The planner's shots are BEATS; three beats can be one continuous move.\nThere are THREE values, not two, because 'one continuous take' and 'the camera moves' are separate facts and pretending otherwise produces an incoherent scene -- a take marked continuous with a static camera gets you neither the cut nor any camera work:\n  'continuous_moving' = ONE unbroken take in which the CAMERA TRAVELS and does the work a cut would do -- a half-orbit past a shoulder that reveals the second character, a push-in onto a face, an arc that swaps the background behind someone, a rack focus that hands attention across a room. cameraMove MUST name that travel.\n  'locked_single'     = ONE unbroken take with a DELIBERATELY STILL camera. Legitimate only when the scene is a SINGLE sustained beat with nothing else that must be seen -- a held portrait, a landscape, one gesture. If the scene needs to show more than one thing and the camera will not move, it is not this.\n  'multi_cut'         = two or more shots joined by described cut events.\nCHOOSE 'continuous_moving' when: one location, unbroken time, at most two characters, a single escalating emotional beat, physical continuity matters, or intimacy and unbroken truth are the point and a cut would let the audience off the hook.\nCHOOSE 'multi_cut' when: scale contrast IS the point, time passes, the location changes, an action has distinct impact beats, comedic timing needs the cut, or you are covering an exchange in shot/reverse. TWO CHARACTERS TALKING IS multi_cut BY DEFAULT -- an exchange has to see both faces, and only a camera that TRAVELS between them earns 'continuous_moving' instead.\nCHOOSE 'locked_single' only for a genuine one-beat held shot."
+      "description": "The summary section. Start with a task-type prefix such as [reference generation], then summarize the target video and shot flow using only the Subject labels the runner will inject."
     },
     "references": {
       "type": "array",
       "minItems": 1,
       "maxItems": 9,
-      "description": "The reference plates H3 holds identity from for THIS whole scene. ORDER IS LOAD-BEARING: subjects first, most important first, and the single `location` reference LAST. HARD CAP 9 (H3's real limit, nearly double LTX MSR's 5) -- but fewer is still better, because every extra plate dilutes the others; cite only what is actually visible somewhere in this scene. Never empty. Appearance STATES are substituted automatically: when a character's ledger state has changed by this scene, the renderer swaps in that state's EDITED plate -- always cite the plain character id, never invent a state id. Because the whole scene renders in ONE pass, a character can only be held from ONE plate here: if their appearance changes mid-scene, cite the state they END in and carry the change itself in the prose.",
+      "description": "Ordered visible references for this scene. Put the most important subjects first and the location last. Every entry must be used by at least one shot.",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": [
           "id",
           "type",
           "appearsAs",
           "job"
         ],
-        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string",
-            "description": "MUST exactly match a story_bible id: a `characters` id for type 'character', an `objects` id for type 'object', a `locations` id for type 'location'. An id matching nothing is dropped with a warning and that subject is reinvented from scratch."
+            "description": "The exact story-bible id. Use the plain character/object/location id, never a generated state id."
           },
           "type": {
             "type": "string",
@@ -73,18 +58,15 @@
               "character",
               "object",
               "location"
-            ],
-            "description": "'character' resolves against the per-character anchor plates (auto-substituted with this scene's appearance-state plate when one exists). 'object' resolves against the per-object anchor plates -- use it only when the scene's action is physically ABOUT that object (held, caught, carried, handed off, dropped). 'location' resolves against the per-location plates and is moved LAST; include exactly one per scene."
+            ]
           },
           "appearsAs": {
             "type": "string",
-            "minLength": 3,
-            "description": "A SHORT (3-8 word) visual descriptor of what this plate shows, reflecting the character's CURRENT ledger state -- for 'character', stated gender plus one or two defining features ('elderly hunched fisherwoman in a green sari'); for 'object', its current visible state ('cane basket, half full of silver fish'); for 'location', the place and its light ('the fish dock at first light'). The renderer reads this straight into the '<Picture N> -- <appearsAs>' binding clause, so it must read as an identifying description, not a name."
+            "description": "Short visual description of the current visible reference, as a lower-case noun phrase. The runner drops it into '<Subject N> is ___ in <Picture N>.'"
           },
           "job": {
             "type": "string",
-            "minLength": 8,
-            "description": "What this plate is FOR in this scene, as a phrase that completes 'Use it for ___'. This is H3's single highest-leverage instruction -- assigning every reference an explicit job measurably beats handing the model images and a description. Be specific and DIFFERENT per plate: 'the woman's face, build and wardrobe, held identical across every cut' / 'the basket's exact weave, colour and size whenever it is in frame' / 'the location, its architecture, set dressing, palette and light'. Do NOT write a slot number here -- the renderer numbers the plates itself."
+            "description": "What this plate must HOLD VISUALLY, as a lower-case noun phrase — the concrete features to preserve ('her face, the lava forearm texture and the copper-wire hair'). NOT a narrative role: 'the defiant smith refusing to surrender the Ember' tells the renderer nothing to preserve. The runner drops it into 'Follow it for ___.'"
           },
           "retention": {
             "type": "string",
@@ -93,23 +75,302 @@
               "partially_preserved",
               "attribute_transfer",
               "weak_reference"
-            ],
-            "description": "How faithfully this plate is held, using the guide's FIXED English markers. 'fully_preserved' for an anchor plate whose identity must not drift (the normal case). 'partially_preserved' when some defined characteristic deliberately changes. 'attribute_transfer' when its characteristics move onto a different subject. 'weak_reference' when only broad style/category/atmosphere similarity is kept -- typical for a style or mood plate. Omit to default to fully_preserved."
+            ]
           }
         }
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered time-bounded beats. startTime values are cut times in seconds: the first is 0 and every later value is strictly greater than the previous one. endTime must be greater than startTime and no greater than duration. The runner enforces these relationships.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "startTime",
+          "endTime",
+          "composition",
+          "acting",
+          "sceneryIds",
+          "action",
+          "cameraMotion",
+          "sound"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endTime": {
+            "type": "number",
+            "minimum": 0
+          },
+          "composition": {
+            "type": "string",
+            "description": "Framing, viewpoint, scale and where each visible subject is — ONE definite answer. Never offer alternatives ('in the background or periphery'): the renderer cannot choose, so an either/or becomes a smear."
+          },
+          "acting": {
+            "type": "array",
+            "description": "REQUIRED on every shot. This is the list of CHARACTERS in the shot: one entry per character, and a character is in the shot if and only if they have an entry here. Only character reference ids, never an object or location. Use [] for a shot with no character in it.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "subjectId",
+                "tactic",
+                "observableBehavior",
+                "beatChange"
+              ],
+              "properties": {
+                "subjectId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Character reference id adapted in this shot."
+                },
+                "tactic": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Concrete action verb describing how the character pursues the objective now."
+                },
+                "observableBehavior": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Filmable behavior in the body, gaze, breath, hands, voice or reaction; never an emotion label alone."
+                },
+                "beatChange": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Visible behavior change that marks the new beat."
+                },
+                "reaction": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional listening or partner reaction that begins before or during the partner's line."
+                },
+                "assessmentMoment": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional visible moment in which the character takes in important information before choosing the next action."
+                },
+                "interruptedAction": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Optional physical business that stops or changes as the beat lands."
+                }
+              }
+            }
+          },
+          "sceneryIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The OBJECT and LOCATION references visible in this shot. Never a character — characters enter a shot only through acting[]. Use [] when the shot shows no object or location."
+          },
+          "action": {
+            "type": "string",
+            "description": "The physical state change: what is true at the start and what is true at the end."
+          },
+          "cameraMotion": {
+            "type": "string",
+            "enum": [
+              "Zoom In",
+              "Zoom Out",
+              "Push In",
+              "Pull Out",
+              "Pan Left",
+              "Pan Right",
+              "Truck Left",
+              "Truck Right",
+              "Tilt Up",
+              "Tilt Down",
+              "Pedestal Up",
+              "Pedestal Down",
+              "Arc Shot",
+              "Tracking Shot",
+              "Static Shot",
+              "Shake Slightly",
+              "Shake Strongly",
+              "POV",
+              "Roll Clockwise",
+              "Roll Counterclockwise"
+            ]
+          },
+          "cameraAmplitude": {
+            "type": "string",
+            "enum": [
+              "small",
+              "large"
+            ],
+            "description": "Optional second camera dimension (base guide 4.3). Omit for medium amplitude."
+          },
+          "cameraSpeed": {
+            "type": "string",
+            "enum": [
+              "slow",
+              "fast"
+            ],
+            "description": "Optional third camera dimension (base guide 4.3). Omit for normal speed."
+          },
+          "sound": {
+            "type": "string",
+            "description": "Physical, shot-synchronous sound only. Keep scene-wide ambience in overallSoundscape."
+          },
+          "transition": {
+            "type": "string",
+            "description": "For later shots, the cut written as a lower-case clause that continues \"At 00:04.000, …\", ideally opening with a documented cut phrase (the shot cuts to / the camera cuts to / the shot transitions to). Say what NEW information the cut reveals. The runner repairs capitalisation and supplies the cut verb if missing."
+          },
+          "dialogue": {
+            "type": "array",
+            "description": "Typed lines owned by this shot. Each exactWords value must match exactly one entry in spokenLines; the runner emits the H3 <d> tag without changing it.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "speakerId",
+                "subjectId",
+                "language",
+                "exactWords",
+                "delivery",
+                "voicePrompt"
+              ],
+              "properties": {
+                "speakerId": {
+                  "type": "string",
+                  "description": "Stable voice id such as S1. The same speaker keeps the same id throughout the scene."
+                },
+                "subjectId": {
+                  "type": "string",
+                  "description": "The visible reference id that owns this voice."
+                },
+                "language": {
+                  "type": "string"
+                },
+                "exactWords": {
+                  "type": "string",
+                  "description": "Copy the corresponding spokenLines string verbatim, including punctuation and native script."
+                },
+                "delivery": {
+                  "type": "string",
+                  "description": "Vocal delivery placed outside the dialogue tag, such as quietly or with a strained breath."
+                },
+                "voicePrompt": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The speaker's fixed vocal identity, copied VERBATIM from that character's character_acting_profile. Required on every line; the runner emits it once, before the subject's first line."
+                },
+                "offScreen": {
+                  "type": "boolean",
+                  "description": "True when the speaker is heard but not seen in this shot. REQUIRED to be true for any speaker who has no acting entry in this shot, since acting[] is what puts a character on screen. The runner then writes the official off-screen voiceover phrasing."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "overallSoundscape": {
+      "type": "string",
+      "description": "One short paragraph of scene-wide non-verbal ambience, physical action sounds and breathing. Never repeat dialogue, singing or score. Use N/A only for genuine silence."
+    },
+    "nonDiegeticMusic": {
+      "type": "string",
+      "description": "Score the characters cannot hear: instrumentation, pace, rhythm and dynamic change. Use N/A when there is no score."
+    },
+    "negatives": {
+      "type": "array",
+      "description": "Explicit negative directions that the runner will write into the positive H3 prose because this graph has no negative-conditioning input.",
+      "items": {
+        "type": "string"
       }
     },
     "duration": {
       "type": "number",
       "minimum": 5,
       "maximum": 15.08,
-      "description": "Seconds this scene runs, 5 to 15.08. This whole scene is ONE H3 call, so this is the length every cut must fit inside. H3 snaps to a 17k+5 frame grid at 24fps, so the grid points in range are 5.17, 5.88, 6.58, 7.29, 8.00, 8.71, 9.42, 10.13 ... 15.08s (124..362 frames) and small deviations are normal -- the renderer snaps UP to the next grid point.\n\nSET THIS FROM THE DIALOGUE, NOT FROM THE CEILING. Measured across 7 renders (720p, seed 4242): H3 generates its audio from this prompt and STRETCHES OR COMPRESSES the spoken line to fill the clip -- leadInSilence + speechSpan == clipLength, every time. So over-allocating is a defect, not a safety margin: a 5-word line in a 5.17s clip came back with 2.94s of DEAD AIR before she spoke. Capacity at ~2.8 words/sec plus ~1.0s fixed lead-in and tail: 5.17s ~12 words, 8.00s ~20 words, 10.13s ~27 words, 15.08s ~40 words. Ask for 15s only when the scene's speech or a deliberately held silence genuinely fills it.\n\nCost, so the choice is informed (720p, 20 steps, nvfp4_full): 5.17s ~141s, 9.42s ~334s, 15.08s ~645s (the last with EasyCache on). Per second of finished video that is 27.3 / 35.5 / 42.8 -- so 5.17s is the most efficient length and a full 15.08s take carries roughly a 1.7x premium per second. Affordable when the scene earns it; not a default.\n\nCUTS ARE FREE. Cost depends on FRAMES, not on how many [Shot N] blocks are inside, so a 15s multi_cut render costs exactly what a 15s continuous take costs. Never drop a cut to save time.\n\nIf the section's beats genuinely cannot fit, cut the least essential beat rather than overrunning -- the renderer hard-clamps and the tail of an over-long shot list never renders."
+      "description": "Total seconds for this one H3 call. Every shot must fit inside it."
     },
     "purpose": {
       "type": "string",
-      "minLength": 1,
-      "description": "What this scene is FOR in the story -- the single beat it lands."
+      "description": "The single story beat this scene lands."
+    },
+    "shotStructure": {
+      "type": "string",
+      "enum": [
+        "continuous_moving",
+        "locked_single",
+        "multi_cut"
+      ],
+      "description": "Use multi_cut for two or more shots; use continuous_moving or locked_single for exactly one shot. The runner enforces the count and timing rules."
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objective",
+        "obstacle",
+        "stakes",
+        "physicalBusiness",
+        "bodyState",
+        "eyeLife"
+      ],
+      "properties": {
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the character wants in this scene, expressed as a verb aimed at a specific partner or concrete target."
+        },
+        "obstacle": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What prevents the objective now."
+        },
+        "stakes": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The concrete cost of failing in this scene."
+        },
+        "physicalBusiness": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The physical task or object-work that gives the performance a life beyond the words."
+        },
+        "bodyState": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Observable center of gravity, posture, tempo, openness and breath at scene start."
+        },
+        "eyeLife": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Observable target changes, micro-saccades, blink quality, catchlights and eyes-leading-thought behavior."
+        },
+        "subtext": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional behaviorally legible difference between what is said and what is pursued."
+        },
+        "statusDynamic": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional visible change in who takes or yields status."
+        },
+        "proxemics": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional motivated distance relationship and changes between the characters."
+        }
+      }
+    },
+    "continuationAnchor": {
+      "type": "string",
+      "description": "Optional end-state anchor for a later continuation: subject appearance, last action, environment/light and prop state."
     }
   },
-  "description": "Scene prompt for MiniMax H3 in OFFICIAL full-reference format (MiniMaxAI/MiniMax-H3 docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md + _base_en.md). The model authors FOUR of the six sections; the RUNNER injects subject_definitions and retention_analysis at their fixed positions, because both are functions of the FINAL reference order after subjects-first/location-last routing and the 9-ref cap -- which the author cannot know. That is also why these are separate fields rather than one prose blob: subject_definitions PRECEDES summary, so the runner interleaves rather than prepends. Earlier revisions used a `<Picture N>` binding clause for every plate; that was WRONG -- the guide reserves <Picture N> for images acting as a concrete frame anchor and says an image used only to define a character, scene, costume or style must instead be cited inside a <Subject N> definition. LENGTH KEYWORDS HAVE A HARD CEILING in llama.cpp's JSON-schema-to-GBNF converter: it expands min/maxLength into that many character repetitions, and past a limit the grammar no longer parses -- the call then 400s with 'Failed to initialize samplers: failed to parse grammar' BEFORE generating anything, so it is a hard failure and not something a retry can fix. Bisected on this box: minLength 1950 ACCEPTED, 2000 REJECTED. minLength is therefore pinned at 1900 (~315 words), deliberately under the cliff, which is why it sits just BELOW the guide's 350-word floor -- the schema cannot enforce the full range on the local path. NEVER add maxLength at all (any value bloats the grammar the same way). And never add a non-standard top-level key such as _comment: local llama.cpp ignores it but OpenRouter rejects it outright with 'strict mode: unknown keyword'."
+  "description": "Strict structured intermediate scene contract for MiniMax H3. The runner deterministically writes subject_definitions and retention_analysis from references, compiles shots and typed dialogue into detailed_description, and assembles the existing six official sections. Do not author subject-definition prose or any <Picture N> slot numbering; those are runner-owned."
 }
