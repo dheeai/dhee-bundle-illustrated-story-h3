@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -17,7 +17,6 @@
       "plan.story_prepare": ">=0.1.0",
       "llm.story_chapters": ">=0.3.0",
       "plan.chapter_text": ">=0.2.0",
-      "plan.chapter_shots": ">=0.1.0",
       "plan.chapter_merge": ">=0.2.0",
       "comfy.tti": ">=0.7.1",
       "comfy.image_edit": ">=0.1.0",
@@ -33,7 +32,6 @@
       "plan.story_prepare": "dhee-runner-story-chapters",
       "llm.story_chapters": "dhee-runner-story-chapters",
       "plan.chapter_text": "dhee-runner-story-chapters",
-      "plan.chapter_shots": "dhee-runner-story-chapters",
       "plan.shot_brief": "dhee-runner-story-chapters",
       "plan.chapter_merge": "dhee-runner-story-chapters",
       "comfy.tti": "dhee-runner-image-edit",
