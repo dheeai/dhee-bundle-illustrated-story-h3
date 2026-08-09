@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.31.3",
+  "version": "0.32.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -20,9 +20,6 @@
       "plan.chapter_merge": ">=0.2.0",
       "comfy.tti": ">=0.7.1",
       "comfy.image_edit": ">=0.1.0",
-      "image.sheet_split": ">=0.1.0",
-      "image.sheet_view_ref": ">=0.1.0",
-      "image.sheet_join": ">=0.1.0",
       "plan.character_states": ">=0.1.0",
       "ffmpeg.concat": ">=0.1.0",
       "plan.assemble_keyframes": ">=0.4.0",
@@ -32,15 +29,10 @@
       "plan.story_prepare": "dhee-runner-story-chapters",
       "llm.story_chapters": "dhee-runner-story-chapters",
       "plan.chapter_text": "dhee-runner-story-chapters",
-      "plan.shot_brief": "dhee-runner-story-chapters",
       "plan.chapter_merge": "dhee-runner-story-chapters",
       "comfy.tti": "dhee-runner-image-edit",
       "comfy.image_edit": "dhee-runner-image-edit",
-      "image.sheet_split": "dhee-runner-sheet-tiles",
-      "image.sheet_view_ref": "dhee-runner-sheet-tiles",
-      "image.sheet_join": "dhee-runner-sheet-tiles",
       "plan.character_states": "dhee-runner-ltx-reference",
-      "comfy.ltx_msr": "dhee-runner-ltx-reference",
       "plan.assemble_keyframes": "dhee-runner-plan-keyframes",
       "comfy.minimax_h3_r2v": "dhee-runner-minimax-h3"
     }
@@ -1145,174 +1137,24 @@
       "headlineField": "imagePrompt"
     },
     {
-      "id": "character_state_view_plan",
-      "displayName": "Character State View Plan (per-view tile crop + prompt assembly)",
-      "kind": "stage",
-      "inputs": [
-        {
-          "from": "character_states_plan",
-          "usage": "input"
-        },
-        {
-          "from": "character_state_prompt",
-          "usage": "input",
-          "scope": "all"
-        },
-        {
-          "from": "character_anchor_image",
-          "usage": "reference",
-          "scope": "all"
-        }
-      ],
-      "outputs": {
-        "format": "json",
-        "pattern": "plans/character_state_views.json"
-      },
-      "runner": {
-        "tool": "image.sheet_split",
-        "config": {
-          "_comment": "v0.6.0: replaces the old single-call comfy.image_edit whole-sheet edit. Measured (dhee-cofounder/artifacts/krea-sheet-state-edit-probe/FINDINGS.md) to fail two independent ways: denoise 1.0 from an EMPTY latent re-imagines the sheet instead of editing it (layout collapses), and even once that is fixed, one instruction cannot bind to N repeated sheet instances (a change lands on some views, not all). The fix is PER-VIEW tile edits expressed as a REAL DAG fan-out (12 states x 4 views = 48 comfy.image_edit calls) rather than hidden inside one runner -- a collection cannot fan N-per-item off another collection, so this STAGE crops+upscales each state's base sheet into its 4 view tiles and assembles each view's edit prompt (identity-only text from character_state_prompt + the fixed per-view clause below + the hard studio constraint) into one flat plan.views[] array; character_state_view_tile/character_state_view_prompt then fan 48 real per-item instances off that array (a stage's own scope:'matching' input can't itself expose one filtered entry to a downstream node -- same reason dhee-runner-video-split/dhee-runner-audio-split exist), and comfy.image_edit + workflows/krea2_edit.json are consumed completely UNCHANGED, genuinely 1:1 (one tile in, one edited tile out). denoise stays krea2_edit.json's own default (1.0) -- FINDINGS round 4 found 1.0 with a clean identity-only instruction handles additive, subtractive AND full-replacement deltas uniformly, so no override is wired here.",
-          "outputPath": "plans/character_state_views.json",
-          "statesInput": "character_states_plan",
-          "promptsInput": "character_state_prompt",
-          "anchorsInput": "character_anchor_image",
-          "views": 2,
-          "viewNames": [
-            "front_full",
-            "closeup_front"
-          ],
-          "viewClauses": [
-            "This is the full-body view of the character standing and facing the camera directly; keep that exact framing and camera angle.",
-            "This is the medium close-up view of the character, head to waist, facing the camera; keep that exact framing and crop."
-          ],
-          "studioConstraint": "The character is photographed in a plain neutral studio against a plain neutral seamless backdrop, with soft even neutral studio lighting and no environment, no ground texture, no cast shadows, no outdoor location and no scene whatsoever. Do not change the backdrop, the lighting or the framing of this photograph.",
-          "tileDir": "assets/images/state_view_tiles_src",
-          "_comment_v0_21_0": "Two views, matching the two the renderer has always actually used. Halves the state-edit work per character."
-        }
-      },
-      "displayCapability": "character.state"
-    },
-    {
-      "id": "character_state_view_tile",
-      "displayName": "Character State View Tiles (per-view crop, 4 per state)",
-      "kind": "collection",
-      "itemSource": "character_state_view_plan",
-      "itemKey": "views",
-      "inputs": [
-        {
-          "from": "character_state_view_plan",
-          "usage": "input",
-          "scope": "matching"
-        }
-      ],
-      "outputs": {
-        "format": "image",
-        "pattern": "assets/images/state_view_tiles/{{item_id}}.png"
-      },
-      "runner": {
-        "tool": "image.sheet_view_ref",
-        "config": {
-          "outputPath": "assets/images/state_view_tiles/{{item_id}}.png",
-          "viewsInput": "character_state_view_plan",
-          "mode": "tile"
-        }
-      },
-      "displayCapability": "character.image"
-    },
-    {
-      "id": "character_state_view_prompt",
-      "displayName": "Character State View Prompts (per-view edit instruction, 4 per state)",
-      "kind": "collection",
-      "itemSource": "character_state_view_plan",
-      "itemKey": "views",
-      "inputs": [
-        {
-          "from": "character_state_view_plan",
-          "usage": "input",
-          "scope": "matching"
-        }
-      ],
-      "outputs": {
-        "format": "json",
-        "pattern": "prompts/state_views/{{item_id}}.json"
-      },
-      "runner": {
-        "tool": "image.sheet_view_ref",
-        "config": {
-          "outputPath": "prompts/state_views/{{item_id}}.json",
-          "viewsInput": "character_state_view_plan",
-          "mode": "prompt"
-        }
-      },
-      "displayCapability": "character.prompt",
-      "headlineField": "imagePrompt"
-    },
-    {
-      "id": "character_state_view",
-      "displayName": "Character State View Edits (krea2 identity edit, per view tile)",
-      "kind": "collection",
-      "itemSource": "character_state_view_plan",
-      "itemKey": "views",
-      "inputs": [
-        {
-          "from": "character_state_view_prompt",
-          "usage": "input",
-          "scope": "matching"
-        },
-        {
-          "from": "character_state_view_tile",
-          "usage": "reference",
-          "scope": "all"
-        }
-      ],
-      "outputs": {
-        "format": "image",
-        "pattern": "assets/images/state_view_edits/{{item_id}}.png"
-      },
-      "runner": {
-        "tool": "comfy.image_edit",
-        "config": {
-          "_comment": "v0.6.0: comfy.image_edit and workflows/krea2_edit.json are UNMODIFIED and used exactly as any other single-image identity edit -- this node is genuinely 1:1 (one view tile in, one edited tile out), 48 instances (12 states x 4 views), fed by character_state_view_tile (the reference image, routed via referenceInputs) and character_state_view_prompt (the pre-assembled per-view prompt). width/height are the deterministic long-edge-1024-snapped-to-16 upscale of this bundle's fixed 384x864 tile size (a 1536x864 4-view anchor sheet always yields exact 384x864 panels) -- see dhee-runner-sheet-tiles' geometry.upscaleLongEdge.",
-          "workflowPath": "workflows/krea2_edit.json",
-          "manifestPath": "workflows/krea2_edit.manifest.json",
-          "endpoint": "self.local",
-          "promptInput": "character_state_view_prompt",
-          "referenceInputs": {
-            "tile": "character_state_view_tile"
-          },
-          "additionalArgs": {
-            "width": 1024,
-            "height": 1152,
-            "seed": 42
-          },
-          "concurrency": 2
-        }
-      },
-      "displayCapability": "character.image"
-    },
-    {
       "id": "character_state_image",
       "displayName": "Character State Sheets (recomposited)",
       "kind": "collection",
       "itemSource": "character_state_prompt",
       "inputs": [
         {
-          "from": "character_states_plan",
-          "usage": "input"
-        },
-        {
-          "from": "character_state_view_plan",
-          "usage": "input"
-        },
-        {
-          "from": "character_state_view",
-          "usage": "reference",
-          "scope": "all"
+          "from": "character_state_prompt",
+          "usage": "input",
+          "scope": "matching"
         },
         {
           "from": "character_anchor_image",
           "usage": "reference",
           "scope": "all"
+        },
+        {
+          "from": "character_states_plan",
+          "usage": "context"
         }
       ],
       "outputs": {
@@ -1320,15 +1162,22 @@
         "pattern": "assets/images/states/{{item_id}}.png"
       },
       "runner": {
-        "tool": "image.sheet_join",
+        "tool": "comfy.image_edit",
         "config": {
-          "_comment": "v0.6.0: replaces the single comfy.image_edit whole-sheet call. Downscales this state's 4 edited view tiles (character_state_view) back to their original panel boxes and pastes them into a fresh canvas of the base anchor sheet's own dimensions -- deterministic recomposite, no model call. Errors rather than silently compositing if fewer than 4 edited tiles resolve, and errors if the composite comes out pixel-identical to the base sheet (a transient upstream failure must never read as a real, if boring, result -- see FINDINGS.md's 'Probe hygiene note'). Output pattern UNCHANGED from the prior single-call version so shot_clip needs no change.",
-          "outputPath": "assets/images/states/{{item_id}}.png",
-          "statesInput": "character_states_plan",
-          "viewPlanInput": "character_state_view_plan",
-          "editedTilesInput": "character_state_view",
-          "anchorsInput": "character_anchor_image",
-          "views": 2
+          "workflowPath": "workflows/krea2_edit.json",
+          "manifestPath": "workflows/krea2_edit.manifest.json",
+          "endpoint": "self.local",
+          "promptInput": "character_state_prompt",
+          "referenceInputs": {
+            "anchor": "character_anchor_image"
+          },
+          "additionalArgs": {
+            "width": 1024,
+            "height": 1152,
+            "seed": 42
+          },
+          "concurrency": 1,
+          "_comment_one_edit": "v0.32.0: the state plate is now ONE edit of the character's whole multi-view anchor sheet, replacing a five-node round trip (image.sheet_split -> per-view tile -> per-view prompt -> per-view comfy.image_edit -> image.sheet_join). That machinery existed because a multi-view sheet was believed to break H3 -- it was bound as a bare <Picture N>, which MEANS 'this image is a concrete frame anchor', so H3 reproduced it as a frame. The founder retracted that finding on 2026-08-08: multi-angle sheets work in production, and the runner now emits <Subject N> with buildSubjectSections grouping several pictures into ONE subject, which is the guide's own documented shape. Editing the sheet whole keeps every panel in one generation, so the panels cannot drift apart from each other the way independently-edited tiles can. It also removes dhee-runner-sheet-tiles from this bundle's dependencies entirely."
         }
       },
       "displayCapability": "character.image"
