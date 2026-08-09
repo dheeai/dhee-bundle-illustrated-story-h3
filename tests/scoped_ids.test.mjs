@@ -22,6 +22,7 @@ const bundle = JSON.parse(readFileSync(join(root, 'bundle.json'), 'utf-8'));
 const schema = JSON.parse(readFileSync(join(root, 'schemas/scene_video_prompt.schema.json'), 'utf-8'));
 const node = bundle.nodes.find((n) => n.id === 'scene_video_prompt');
 const cfg = node.runner.config;
+const pie = cfg.perItemEnums ?? {};
 
 /** Same walk the runner does: slash-separated, every step must exist. */
 function resolvePointer(pointer) {
@@ -33,16 +34,19 @@ function resolvePointer(pointer) {
   return cursor;
 }
 
-test('the node authors through the scoped runner, not plain llm.generate', () => {
-  assert.equal(node.runner.tool, 'llm.generate_scoped');
-  assert.equal(bundle.dependencies.runners['llm.generate_scoped'] !== undefined, true);
-  assert.equal(bundle.dependencies.runnerPackages['llm.generate_scoped'], 'dhee-runner-scene-author');
+test('the node binds its ids per item, through the ENGINE not an external runner', () => {
+  // v0.31.0 moved this into dhee-core: cfg.outputSchema is one static path for
+  // the whole fan-out, which is a hole in llm.generate's own structured-output
+  // contract over collections, not something specific to this bundle.
+  assert.equal(node.runner.tool, 'llm.generate');
+  assert.equal(bundle.dependencies.runners['llm.generate_scoped'], undefined);
+  assert.ok(cfg.perItemEnums, 'scene_video_prompt must declare perItemEnums');
 });
 
 test('the allowlist is read from the SAME artifact the render gate reads', () => {
   // scenes_plan.sections[].entities is what expectedSceneReferenceIds resolves
   // downstream. Reading a different list would let the two drift apart.
-  assert.deepEqual(cfg.allowlist, {
+  assert.deepEqual({ from: pie.from, itemsKey: pie.itemsKey, matchField: pie.matchField, valuesField: pie.valuesField }, {
     from: 'scenes_plan',
     itemsKey: 'sections',
     matchField: 'id',
@@ -52,8 +56,8 @@ test('the allowlist is read from the SAME artifact the render gate reads', () =>
 });
 
 test('every enum path resolves to a string field in the real schema', () => {
-  assert.ok(cfg.enumSchemaPaths.length >= 4);
-  for (const pointer of cfg.enumSchemaPaths) {
+  assert.ok(pie.enumSchemaPaths.length >= 4);
+  for (const pointer of pie.enumSchemaPaths) {
     const slot = resolvePointer(pointer);
     assert.ok(slot && typeof slot === 'object', `enumSchemaPaths '${pointer}' does not resolve`);
     assert.equal(slot.type, 'string', `enumSchemaPaths '${pointer}' is not a string field`);
@@ -64,18 +68,18 @@ test('an off-screen speaker is CHECKED with an exemption, never enum-bound', () 
   // A grammar cannot express "unless offScreen is true", so enum-ing this field
   // would make a legitimate off-screen line undecodable — stricter than the
   // render gate, which exempts it outright.
-  const dialogue = cfg.idPaths.find((p) => typeof p === 'object' && p.path === 'shots[].dialogue[].subjectId');
+  const dialogue = pie.idPaths.find((p) => typeof p === 'object' && p.path === 'shots[].dialogue[].subjectId');
   assert.ok(dialogue, 'dialogue subjectId must still be checked');
   assert.deepEqual(dialogue.exemptWhen, { field: 'offScreen', equals: true });
   assert.equal(
-    cfg.enumSchemaPaths.some((p) => p.includes('dialogue')),
+    pie.enumSchemaPaths.some((p) => p.includes('dialogue')),
     false,
     'dialogue subjectId must not be enum-bound',
   );
 });
 
 test('a boundary ledger is not this scene’s cast — continuationFrom and offStage stay free', () => {
-  const constrained = [...cfg.enumSchemaPaths, ...cfg.idPaths.map((p) => (typeof p === 'string' ? p : p.path))];
+  const constrained = [...pie.enumSchemaPaths, ...pie.idPaths.map((p) => (typeof p === 'string' ? p : p.path))];
   for (const forbidden of ['continuationFrom', 'offStage']) {
     assert.equal(
       constrained.some((p) => p.includes(forbidden)),
@@ -85,7 +89,15 @@ test('a boundary ledger is not this scene’s cast — continuationFrom and offS
   }
 });
 
+test('a licensed id in the WRONG SLOT is caught too — no enum can do that', () => {
+  // ashfall_crown scene_3 put `ash_sworn_riders`, a character, in sceneryIds.
+  // Licensed, spelled right, fatal at render. The enum binds every id field to
+  // the same list, so only a type-aware check catches it.
+  assert.deepEqual(pie.characterPaths, ['shots[].acting[].subjectId']);
+  assert.deepEqual(pie.sceneryPaths, ['shots[].sceneryIds[]']);
+});
+
 test('continuationAnchor IS constrained — the gate hard-fails on it', () => {
-  const paths = cfg.idPaths.map((p) => (typeof p === 'string' ? p : p.path));
+  const paths = pie.idPaths.map((p) => (typeof p === 'string' ? p : p.path));
   assert.ok(paths.includes('continuationAnchor.characterPositions[].subjectId'));
 });
