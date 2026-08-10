@@ -1,6 +1,6 @@
 {
   "id": "illustrated_story_h3",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "license": "MIT",
   "_comment_v0_13_0": "Clip ceiling raised 10.13s -> 15.08s (362 frames), the top of H3's trained range, so a scene that genuinely wants an unbroken take can have one. This does NOT change the default length: duration is still DERIVED FROM THE DIALOGUE (v0.11.0) and 5.17s remains both the efficiency optimum (27.3s of wall clock per second of video, against 42.8 at 15.08s) and the floor of H3's trained range. The old 8s/10s caps were justified by a \"cost cliff\" that has since been retracted as measurement noise -- see _comment_maxClipSec. Also in this version: workflows/minimax_h3_r2v.json switches the unet from pruned_nvfp4 to nvfp4_full, which measured FASTER (141s vs 169s at 124f, 334s vs 407s at 226f -- paired within one run at both lengths) as well as being the better weights; the earlier preference for pruned was reasoning from a VRAM budget that does not exist (in-flight VRAM is pinned at ~31.6 of 32 GiB at EVERY clip length, and the text encoder is already offloaded to CPU by default). Prompt and schema now also state that CUTS INSIDE A RENDER ARE FREE -- cost is frames, not cut count -- so no cut should ever be dropped to save time.",
   "_comment_v0_12_0": "Upscale pass swapped comfy.rtx_vsr -> comfy.ltx_upscale (founder directive 2026-08-04), and the merge node now pins maxClipSec 10.13 to mirror scene_clip.maxSeconds so authored timecodes match rendered clip length. The VSR->LTX swap lifts the ceiling on this bundle's cheap-render strategy: VSR only sharpened what survived a 480p render, so a soft face stayed soft; LTX's upsample+refine is generative and rebuilds it, at ~45s per 5s clip (vs ~12s per clip for VSR). Same target contract, so it was a same-node swap. NOTE on stage ordering: the founder asked that every H3 render finish before any upscaling starts, to stop the GPU swapping between the H3 and LTX weights. That is ALREADY guaranteed by dhee-core's walker with no core change -- walker.ts executes strictly node-by-node (`for (const node of ordered)`), draining every instance of a node before the next node starts, and scene_upscaled takes scene_clip as an input so topological order puts all 1..N clips before any upscale. Verified against a real run.log, where each collection's instances drain contiguously (all character_anchor_prompt items, then all object_anchor_prompt items, ...). No bundle or engine change was needed for the ordering guarantee.",
@@ -1242,37 +1242,11 @@
             "matchField": "id",
             "valuesField": "entities",
             "enumSchemaPaths": [
-              "properties/references/items/properties/id",
-              "properties/shots/items/properties/acting/items/properties/subjectId",
-              "properties/shots/items/properties/sceneryIds/items",
-              "properties/continuationAnchor/properties/characterPositions/items/properties/subjectId"
+              "properties/references/items/properties/id"
             ],
             "idPaths": [
-              "references[].id",
-              "shots[].acting[].subjectId",
-              "shots[].sceneryIds[]",
-              "continuationAnchor.characterPositions[].subjectId",
-              {
-                "path": "shots[].dialogue[].subjectId",
-                "exemptWhen": {
-                  "field": "offScreen",
-                  "equals": true
-                }
-              }
+              "references[].id"
             ],
-            "characterPaths": [
-              "shots[].acting[].subjectId"
-            ],
-            "sceneryPaths": [
-              "shots[].sceneryIds[]"
-            ],
-            "requireDeclared": {
-              "paths": [
-                "shots[].sceneryIds[]",
-                "shots[].acting[].subjectId"
-              ],
-              "declaredPath": "references[].id"
-            },
             "requireAssetIn": {
               "dirs": [
                 "assets/images/anchors",
@@ -1300,7 +1274,8 @@
           "_comment_continuity_chain": "v0.25.0 CLOSES THE HANDOFF CHAIN. `continuationAnchor` existed since the structured rewrite and described each scene's end state 'so a later scene can continue cleanly' -- and NOTHING READ IT. scene_video_prompt's inputs were this scene's own scene_detail plus the bibles, so every scene was authored blind to its predecessor's realised end state. That is the single root cause of three defects the founder caught by watching (a character present instead of arriving, a fixture moving between cuts, a beat skipped so people teleported) and one found by reading the prompts against each other: scene 1 ended with the tea poured and steaming while scene 2 opened asserting the cups were not yet visible. The fix is the self-edge above -- scope:'previousN', n:1, the SAME mechanism chapter_screenplay_draft already uses -- which exposes the immediately preceding scene's finished prompt as {{scene_video_prompt}}. The author copies its continuationAnchor into continuationFrom and opens on it. concurrency is 1 because scene N's call depends on scene N-1's completed output; the engine force-clamps any node with a previousN input to serial anyway, so this is documentation of a constraint rather than a knob. COST: scene prompts no longer author in parallel. That is the price of the chain and it is worth it -- the authoring calls are cheap next to a 119s render per clip. Both fields are STRUCTURED LEDGERS, not prose, because prose rules in this bundle have drifted twice; the runner (dhee-runner-minimax-h3 >=0.6.0) compiles continuationFrom into directed prose before [Shot 1] and no longer emits continuationAnchor at all -- it describes a state after the clip ends.",
           "_comment_scoped_ids": "v0.31.0: back to the built-in llm.generate, now that dhee-core owns per-item enum binding (cfg.perItemEnums). v0.30.0 routed this node through an EXTERNAL llm.generate_scoped runner because cfg.outputSchema is one static path resolved once against bundleDir -- every item of a collection fan-out got a byte-identical schema, so the model was free to write an id belonging to a different section, and the mismatch was only caught downstream at render ('unknown references[2].id=\"chocolate_bar\"') after GPU time was already spent. That external runner worked (zero repairs across 6 scenes on thinkingcap-27b) but it had to reimplement ~40% of llm.generate -- template substitution, the retry loop, pendingCritiques, skip-if-exists -- and lost CAS, purely to own the call. The hole was never bundle-specific: it is llm.generate's own structured-output contract over COLLECTIONS, so the fix belongs in the engine. perItemEnums injects this section's entities[] as an enum into a COPY of the schema (GBNF-compiled on the local gateway, so a stray id is UNDECODABLE), re-checks every id after the call, and feeds violations into the same retry loop that already self-corrects schema failures. characterPaths/sceneryPaths additionally catch an id that is licensed but in the WRONG SLOT -- a character in sceneryIds is fatal at render and no enum can prevent it (measured on ashfall_crown scene_3: ash_sworn_riders). enumSchemaPaths still OMITS dialogue subjectId (an offScreen speaker legitimately has no plate, and a grammar cannot express the exemption -- it is CHECKED instead) and both continuation ledgers (a boundary ledger is the previous scene's end state, not this scene's cast).",
           "_comment_require_declared": "v0.33.0: requireDeclared catches the THIRD id failure, found only by authoring a film on a different local model (g4-meromero rather than thinkingcap-27b). scene_7's section licensed `the_deep_quarries`, shot 0 staged it in sceneryIds, and references[] listed only three of the four ids -- so the enum passed (licensed), the allowlist check passed (licensed), the slot check passed (correctly scenery), and the film still died at its LAST scene with 'shots[0] references unknown id the_deep_quarries'. It is a contract INSIDE the document: whatever a shot stages must also be declared with its type and appearance, or the renderer has no plate to bind it to. Three green thinkingcap films hid this because that model happened always to declare them.",
-          "_comment_require_asset": "v0.34.0: requireAssetIn narrows the allowlist to entities that actually have an anchor PLATE on disk. An id can be licensed by scenes_plan, correctly slotted and properly declared -- every id check green -- and still have no image for comfy.minimax_h3_r2v to attach, because the anchor node never rendered it. Measured on desktop_h3_g4b, a film that reported 49/49 COMPLETE: scene_7's section licensed `the_lower_gallery__gold_vein`, only `locations/the_deep_quarries.png` was ever generated, and the scene rendered citing a reference the runner could not resolve. Nothing failed; the film was quietly short a plate. Narrowing makes such an id undecodable, so the author writes the beat without it. When NO licensed id has an asset yet the allowlist is left alone -- that means the anchor stage has not finished, not that the scene should be authored against nothing."
+          "_comment_require_asset": "v0.34.0: requireAssetIn narrows the allowlist to entities that actually have an anchor PLATE on disk. An id can be licensed by scenes_plan, correctly slotted and properly declared -- every id check green -- and still have no image for comfy.minimax_h3_r2v to attach, because the anchor node never rendered it. Measured on desktop_h3_g4b, a film that reported 49/49 COMPLETE: scene_7's section licensed `the_lower_gallery__gold_vein`, only `locations/the_deep_quarries.png` was ever generated, and the scene rendered citing a reference the runner could not resolve. Nothing failed; the film was quietly short a plate. Narrowing makes such an id undecodable, so the author writes the beat without it. When NO licensed id has an asset yet the allowlist is left alone -- that means the anchor stage has not finished, not that the scene should be authored against nothing.",
+          "_comment_indexed_refs": "v0.35.0: shots point at references by 0-based POSITION (subjectRef / sceneryRefs), not by id string. Ids now appear in exactly ONE place -- references[].id -- which is the only field perItemEnums still needs to constrain. What that buys, concretely: UNLICENSED dies because a shot has no id field to put a foreign id in; UNDECLARED dies because an index either resolves to a declared entry or is out of range, which normalizeIndexedRefs reports naming the index and the entries available. WRONG SLOT survives as a check rather than becoming impossible -- a single references[] array means an index CAN point at the wrong type -- and it is caught in the runner by validateStructuredScenePerformance, which names only the character ids as the legal options. Splitting references into characters[]/scenery[] with separate index spaces would kill that class too; not done yet because the compiler reads one array. characterPaths/sceneryPaths/requireDeclared are dropped from this config because at AUTHORING time there are no longer any id-valued shot fields for them to inspect -- leaving them would have been a silent no-op, which is the exact failure mode the enum-path resolution check exists to prevent."
         }
       },
       "displayCapability": "shot.video_prompt",

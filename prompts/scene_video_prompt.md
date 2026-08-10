@@ -14,26 +14,48 @@ their final routed order and remaps those labels if routing changes the order.
 
 The section you are authoring is supplied below as `scene_detail`, and it is the
 ONLY section you can see. Its `section.entities[]` IS your reference allowlist
-and its `shots[]` are your cuts — there is no other section in scope and nothing
-to filter. Copy ids only from that allowlist: every
-`references[].id`, every `shots[].acting[].subjectId`, every
-`shots[].sceneryIds[]` entry, and every dialogue
-`subjectId` MUST be an id copied verbatim from the current section's entities.
-Never borrow ids from examples, the story bible generally, another section, or
-your own invention.
+and its `shots[]` are your cuts.
+
+**Ids appear in exactly ONE place: `references[].id`.** Every id there must be
+copied verbatim from the current section's entities. Never borrow an id from an
+example, from the story bible generally, from another section, or from your own
+invention.
+
+**Everywhere else you point at a reference by its POSITION, not its name.**
+`references` is an ordered list; `references[0]` is the first entry. A shot says
+which of them it stages with a 0-based integer:
+
+```jsonc
+"references": [
+  { "id": "sereth_vale", "type": "character", ... },   // 0
+  { "id": "kael",        "type": "character", ... },   // 1
+  { "id": "the_forge",   "type": "location",  ... }    // 2
+],
+"shots": [{
+  "acting":      [{ "subjectRef": 0, ... }, { "subjectRef": 1, ... }],
+  "sceneryRefs": [2],
+  "dialogue":    [{ "subjectRef": 0, "exactWords": "Hold it steady.", ... }]
+}]
+```
+
+This is not a stylistic preference — it removes whole classes of mistake that
+have killed finished films. A position cannot be a misspelling, cannot belong to
+a different section, and cannot name something you forgot to declare. An index
+must be **less than the number of entries you actually wrote**: if you declare
+three references, the only legal values anywhere are 0, 1 and 2.
 
 **`entities[]` wins over the section's prose.** If the section's `text` mentions
 something that is NOT in `entities` — a lantern the Courier holds, a knife on a
-table — you may not stage it: no reference, no `sceneryIds` entry, no dialogue
+table — you may not stage it: no reference, no `sceneryRefs` entry, no dialogue
 subject, and do not describe it in a shot. Write the beat without it. That thing
-has no reference plate, so staging it is rejected before the render and costs
-the whole run; leaving it out costs one prop. (Measured on a real film: a
-section's text described a lantern its `entities` omitted, the scene was
-authored with it, and the render gate killed the run at that scene.) If an entity from the current section is visible or takes
-effect in the scene, include it in `references` and use that same id in the
-relevant shot or dialogue subject field. Do not invent example ids such as
-`traveler`, `cliff`, `S1`, `L1`, or `tech_01`; `S1`-style values are allowed only
-as `speakerId` values when assigning a voice, never as reference or subject ids.
+has no reference plate, so staging it is rejected before the render and costs the
+whole run; leaving it out costs one prop. If an entity from the current section
+is visible or takes effect in the scene, declare it in `references` and point at
+it by position from the relevant shot.
+
+**Characters go in `acting`, objects and locations in `sceneryRefs`.** Pointing
+at a character's position from `sceneryRefs`, or a location's from `acting`, is
+rejected. `S1`-style values remain `speakerId` values only — never a reference.
 
 ## Output fields
 
@@ -100,7 +122,7 @@ object has:
 
 - `speakerId`: a stable id such as `S1`; the same voice keeps the same id across
   all shots.
-- `subjectId`: the character reference id that owns the voice.
+- `subjectRef`: the POSITION in `references[]` of the character who owns the voice. Omit it for an off-screen speaker who has no plate in this scene, and set `offScreen: true`.
 - `language`: the language name for the H3 tag.
 - `exactWords`: an exact character-for-character copy of one `spokenLines`
   entry. Never paraphrase, summarize, translate or add punctuation.
@@ -154,14 +176,14 @@ obstacle, the cost of failure, the physical business, the starting body state
 and continuous eye life. Add subtext, status change and motivated distance when
 they are present. Write behavior under pressure, not emotion labels.
 
-`shots[].acting` IS the shot's cast list. A character is in the shot if and only
+`shots[].acting` IS the shot's cast list, and each entry points at a character by POSITION (`subjectRef`). A character is in the shot if and only
 if they have an entry here — there is no separate list of who is present, so
 "who is in this shot" and "how they play it" are one decision and cannot
 disagree. Give each character in the shot exactly one entry. A shot with no
 character in it takes `"acting": []`.
 
-Only characters go here. Objects and locations go in `sceneryIds`; putting one
-in `acting`, or a character in `sceneryIds`, is rejected.
+Only characters go here. Objects and locations go in `sceneryRefs`; pointing at a character from
+`sceneryRefs`, or at a location from `acting`, is rejected.
 
 Each acting object names a concrete `tactic`, observable behavior and visible
 beat change; include listening or assessment behavior when another character
@@ -215,7 +237,7 @@ Every shot requires:
   periphery"); the renderer cannot choose between them.
 - `acting`: the CHARACTERS in this shot — see below. A character is in the shot
   if and only if they have an entry here.
-- `sceneryIds`: the OBJECT and LOCATION ids visible in this shot. Never a
+- `sceneryRefs`: the POSITIONS in `references[]` of the OBJECT and LOCATION entries visible in this shot. Never a
   character. Use `[]` when the shot shows none.
 
   Include an object here only when it MATTERS to this shot — handled, looked at,
@@ -381,15 +403,15 @@ accident.
 2. `spokenLines` contains only this scene's exact bare words.
 3. Every spoken line is owned by exactly one typed shot dialogue object.
 4. Every dialogue `exactWords` exactly matches its ledger entry.
-5. Every `subjectId` and reference id is consistent.
+5. Every `subjectRef` / `sceneryRefs` value is less than the number of entries you wrote in `references`.
 6. Camera terms come directly from the enum.
 7. The first shot starts at 0; later starts strictly increase; every end time
    fits inside `duration`.
 8. `multi_cut` has at least two shots; either single-take value has exactly one.
 9. No field contains subject-definition prose or reference slot numbering.
 10. `renderComplexity` reflects RENDER difficulty, not story importance.
-11. Every shot has both `acting` (its characters) and `sceneryIds` (its objects
-    and locations), each possibly `[]`. No character appears in `sceneryIds`
+11. Every shot has both `acting` (its characters) and `sceneryRefs` (its objects
+    and locations), each possibly `[]`. No character position appears in `sceneryRefs`
     and no object or location appears in `acting`.
 12. Every dialogue line carries a verbatim `voicePrompt`, and any line whose
     speaker has no `acting` entry in that same shot sets `offScreen: true`.

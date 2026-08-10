@@ -56,7 +56,9 @@ test('the allowlist is read from the SAME artifact the render gate reads', () =>
 });
 
 test('every enum path resolves to a string field in the real schema', () => {
-  assert.ok(pie.enumSchemaPaths.length >= 4);
+  // One path now, not four: indexed refs left references[].id as the only
+  // id-valued field an author writes.
+  assert.ok(pie.enumSchemaPaths.length >= 1);
   for (const pointer of pie.enumSchemaPaths) {
     const slot = resolvePointer(pointer);
     assert.ok(slot && typeof slot === 'object', `enumSchemaPaths '${pointer}' does not resolve`);
@@ -64,22 +66,44 @@ test('every enum path resolves to a string field in the real schema', () => {
   }
 });
 
+test('ids live in ONE field, so that is the only one to constrain', () => {
+  // v0.35.0: shots point at positions. references[].id is the only id-valued
+  // field an author writes, so it is the only path left to enum-bind or check.
+  assert.deepEqual(pie.idPaths, ['references[].id']);
+  assert.deepEqual(pie.enumSchemaPaths, ['properties/references/items/properties/id']);
+  // These are gone deliberately: with no id-valued shot fields they would have
+  // inspected nothing, and a silent no-op is worse than an absent check.
+  for (const dead of ['characterPaths', 'sceneryPaths', 'requireDeclared']) {
+    assert.equal(pie[dead], undefined, `${dead} should be gone under indexed refs`);
+  }
+});
+
+test('shots address references by POSITION, and the schema bounds the index', () => {
+  const shot = schema.properties.shots.items.properties;
+  assert.equal(shot.sceneryIds, undefined, 'sceneryIds must be gone');
+  assert.equal(shot.sceneryRefs.items.type, 'integer');
+  assert.equal(shot.acting.items.properties.subjectId, undefined, 'subjectId must be gone');
+  assert.equal(shot.acting.items.properties.subjectRef.type, 'integer');
+  // maxItems on references is 9, so the schema can bound an index to 0..8 —
+  // but NOT to the actual length of this document's array. That residue is a
+  // bounds check at resolution, not a schema guarantee.
+  assert.equal(shot.acting.items.properties.subjectRef.maximum, schema.properties.references.maxItems - 1);
+});
+
 test('an off-screen speaker is CHECKED with an exemption, never enum-bound', () => {
   // A grammar cannot express "unless offScreen is true", so enum-ing this field
   // would make a legitimate off-screen line undecodable — stricter than the
   // render gate, which exempts it outright.
-  const dialogue = pie.idPaths.find((p) => typeof p === 'object' && p.path === 'shots[].dialogue[].subjectId');
-  assert.ok(dialogue, 'dialogue subjectId must still be checked');
-  assert.deepEqual(dialogue.exemptWhen, { field: 'offScreen', equals: true });
-  assert.equal(
-    pie.enumSchemaPaths.some((p) => p.includes('dialogue')),
-    false,
-    'dialogue subjectId must not be enum-bound',
-  );
+  // Under indexed refs the exemption is expressed in the SCHEMA: subjectRef is
+  // simply not required on a dialogue line, so an off-screen speaker with no
+  // plate in this scene can omit it.
+  const dialogue = schema.properties.shots.items.properties.dialogue.items;
+  assert.equal(dialogue.properties.subjectRef.type, 'integer');
+  assert.equal(dialogue.required.includes('subjectRef'), false, 'an off-screen speaker has no plate to point at');
 });
 
 test('a boundary ledger is not this scene’s cast — continuationFrom and offStage stay free', () => {
-  const constrained = [...pie.enumSchemaPaths, ...pie.idPaths.map((p) => (typeof p === 'string' ? p : p.path))];
+  const constrained = [...pie.enumSchemaPaths, ...pie.idPaths];
   for (const forbidden of ['continuationFrom', 'offStage']) {
     assert.equal(
       constrained.some((p) => p.includes(forbidden)),
@@ -89,15 +113,18 @@ test('a boundary ledger is not this scene’s cast — continuationFrom and offS
   }
 });
 
-test('a licensed id in the WRONG SLOT is caught too — no enum can do that', () => {
-  // ashfall_crown scene_3 put `ash_sworn_riders`, a character, in sceneryIds.
-  // Licensed, spelled right, fatal at render. The enum binds every id field to
-  // the same list, so only a type-aware check catches it.
-  assert.deepEqual(pie.characterPaths, ['shots[].acting[].subjectId']);
-  assert.deepEqual(pie.sceneryPaths, ['shots[].sceneryIds[]']);
+test('wrong-slot is still possible with one references array — and the runner catches it', () => {
+  // An index CAN point at the wrong type while references[] is a single array,
+  // so this class is reduced but not deleted. It is caught downstream by
+  // validateStructuredScenePerformance, which names only the character ids as
+  // the legal options. Splitting references into characters[]/scenery[] with
+  // separate index spaces would make it unrepresentable.
+  assert.equal(schema.properties.characters, undefined);
+  assert.ok(schema.properties.references, 'still one array — the residue is deliberate');
 });
 
-test('continuationAnchor IS constrained — the gate hard-fails on it', () => {
-  const paths = pie.idPaths.map((p) => (typeof p === 'string' ? p : p.path));
-  assert.ok(paths.includes('continuationAnchor.characterPositions[].subjectId'));
+test('continuationAnchor points at this scene\u2019s own references, by position', () => {
+  const ca = schema.properties.continuationAnchor.properties.characterPositions.items;
+  assert.equal(ca.properties.subjectRef.type, 'integer');
+  assert.equal(ca.properties.subjectId, undefined);
 });

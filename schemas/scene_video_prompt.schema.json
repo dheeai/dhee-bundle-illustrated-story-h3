@@ -96,7 +96,7 @@
           "endTime",
           "composition",
           "acting",
-          "sceneryIds",
+          "sceneryRefs",
           "action",
           "cameraMotion",
           "sound"
@@ -124,16 +124,17 @@
               "type": "object",
               "additionalProperties": false,
               "required": [
-                "subjectId",
+                "subjectRef",
                 "tactic",
                 "observableBehavior",
                 "beatChange"
               ],
               "properties": {
-                "subjectId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "description": "Character reference id adapted in this shot."
+                "subjectRef": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8,
+                  "description": "0-based POSITION in this scene's references[] of the character playing this beat. An index, not a name: ids live in references[].id and nowhere else, so a shot cannot invent one, borrow another section's, or address scenery as a character."
                 },
                 "tactic": {
                   "type": "string",
@@ -167,13 +168,6 @@
                 }
               }
             }
-          },
-          "sceneryIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The OBJECT and LOCATION references visible in this shot. Never a character — characters enter a shot only through acting[]. Use [] when the shot shows no object or location."
           },
           "action": {
             "type": "string",
@@ -236,20 +230,21 @@
               "additionalProperties": false,
               "required": [
                 "speakerId",
-                "subjectId",
                 "language",
                 "exactWords",
                 "delivery",
                 "voicePrompt"
               ],
               "properties": {
+                "subjectRef": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8,
+                  "description": "0-based POSITION in references[] of the character who owns this voice. An OFF-SCREEN speaker who has no plate in this scene is the one exception: omit subjectRef and set offScreen true."
+                },
                 "speakerId": {
                   "type": "string",
                   "description": "Stable voice id such as S1. The same speaker keeps the same id throughout the scene."
-                },
-                "subjectId": {
-                  "type": "string",
-                  "description": "The visible reference id that owns this voice."
                 },
                 "language": {
                   "type": "string"
@@ -273,6 +268,15 @@
                 }
               }
             }
+          },
+          "sceneryRefs": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8
+            },
+            "description": "0-based POSITIONS in references[] of the OBJECT and LOCATION references visible in this shot. Never a character — characters are staged through acting[]."
           }
         }
       }
@@ -425,15 +429,17 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "subjectId",
+              "subjectRef",
               "screenPosition",
               "facing",
               "pose"
             ],
             "properties": {
-              "subjectId": {
-                "type": "string",
-                "description": "A character id from references[]."
+              "subjectRef": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8,
+                "description": "0-based POSITION in references[] of the character. This ledger describes the state THIS scene ends in, so it indexes this scene's own references."
               },
               "screenPosition": {
                 "type": "string",
