@@ -122,7 +122,12 @@ object has:
 
 - `speakerId`: a stable id such as `S1`; the same voice keeps the same id across
   all shots.
-- `subjectRef`: the POSITION in `references[]` of the character who owns the voice. Omit it for an off-screen speaker who has no plate in this scene, and set `offScreen: true`.
+- `subjectRef`: REQUIRED on every line, on screen or not — the POSITION in
+  `references[]` of the character who owns the voice. Every id you declare in
+  `references[]` already has an anchor plate on disk, so there is no legitimate
+  speaker with nothing to point at. An off-screen speaker still points at their
+  own plate here; set `offScreen: true` alongside it rather than omitting this
+  field.
 - `language`: the language name for the H3 tag.
 - `exactWords`: an exact character-for-character copy of one `spokenLines`
   entry. Never paraphrase, summarize, translate or add punctuation.
@@ -132,10 +137,12 @@ object has:
   their `character_acting_profile`. Put it on every line of theirs; the runner
   emits it once, before their first line. Do not paraphrase, shorten or invent
   it.
-- `offScreen`: set `true` when the line is heard but the speaker is not seen in
-  this shot. A speaker who has no `acting` entry in this shot is not on screen,
-  so their line MUST set this — otherwise the scene is rejected. The runner
-  then writes the official off-screen voiceover phrasing for you.
+- `offScreen`: REQUIRED on every line — state `true` or `false` explicitly, do
+  not leave it to be inferred. `true` when the line is heard but the speaker is
+  not seen in this shot. A speaker who has no `acting` entry in this shot is
+  not on screen, so their line MUST set this to `true` — otherwise the scene is
+  rejected. The runner then writes the official off-screen voiceover phrasing
+  for you.
 
 The runner emits the canonical form
 `<Subject N> (Sx) says [delivery]: <d>[Language] exact words</d>`.
@@ -201,6 +208,14 @@ attached to a silent character and can never be missing for a speaking one.
 subjects first and the single location last when a location is present. Include
 only references visible or taking effect in a shot. Every reference must be
 used by at least one shot.
+
+**Every id must be DISTINCT — declare each subject exactly once.** `maxItems: 9`
+is a CEILING for a crowded scene, not a target to fill. If this scene has two
+characters and a location, `references` has 3 entries, not 9. Repeating an id
+to fill unused slots burns H3's reference budget on duplicates of a cast you
+already declared, and — because shots point at references by POSITION — makes
+one character describable under two different `<Subject N>` numbers, which is
+the exact contradictory-numbering failure this format exists to prevent.
 
 Each reference has:
 
@@ -403,7 +418,7 @@ accident.
 2. `spokenLines` contains only this scene's exact bare words.
 3. Every spoken line is owned by exactly one typed shot dialogue object.
 4. Every dialogue `exactWords` exactly matches its ledger entry.
-5. Every `subjectRef` / `sceneryRefs` value is less than the number of entries you wrote in `references`.
+5. Every `subjectRef` / `sceneryRefs` value is less than the number of entries you wrote in `references`, and every `references[].id` is distinct — no id repeated to fill slots.
 6. Camera terms come directly from the enum.
 7. The first shot starts at 0; later starts strictly increase; every end time
    fits inside `duration`.
@@ -413,8 +428,9 @@ accident.
 11. Every shot has both `acting` (its characters) and `sceneryRefs` (its objects
     and locations), each possibly `[]`. No character position appears in `sceneryRefs`
     and no object or location appears in `acting`.
-12. Every dialogue line carries a verbatim `voicePrompt`, and any line whose
-    speaker has no `acting` entry in that same shot sets `offScreen: true`.
+12. Every dialogue line carries a `subjectRef`, an explicit `offScreen`
+    (`true`/`false`) and a verbatim `voicePrompt`, and any line whose speaker
+    has no `acting` entry in that same shot sets `offScreen: true`.
 
 ## Supplied context
 

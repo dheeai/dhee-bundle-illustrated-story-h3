@@ -90,16 +90,20 @@ test('shots address references by POSITION, and the schema bounds the index', ()
   assert.equal(shot.acting.items.properties.subjectRef.maximum, schema.properties.references.maxItems - 1);
 });
 
-test('an off-screen speaker is CHECKED with an exemption, never enum-bound', () => {
-  // A grammar cannot express "unless offScreen is true", so enum-ing this field
-  // would make a legitimate off-screen line undecodable — stricter than the
-  // render gate, which exempts it outright.
-  // Under indexed refs the exemption is expressed in the SCHEMA: subjectRef is
-  // simply not required on a dialogue line, so an off-screen speaker with no
-  // plate in this scene can omit it.
+test('a dialogue speaker always points at a plate — subjectRef is mandatory (#18)', () => {
+  // #18: subjectRef was optional in the schema (grammar-constrained decoding
+  // never emits an optional field) but mandatory in the runner, so 100% of
+  // dialogue lines died at render time. Every id in references[] already has
+  // an anchor image on disk (perItemEnums.requireAssetIn below), so there is
+  // no legitimate speaker with nothing to point at — including an off-screen
+  // one, which still names its own plate and sets offScreen:true instead. The
+  // runner's genuinely-unplated-speaker path (417bfe4) stays available for
+  // OTHER bundles that still author subjectId as a free string; this bundle's
+  // schema just never emits that shape.
   const dialogue = schema.properties.shots.items.properties.dialogue.items;
   assert.equal(dialogue.properties.subjectRef.type, 'integer');
-  assert.equal(dialogue.required.includes('subjectRef'), false, 'an off-screen speaker has no plate to point at');
+  assert.ok(dialogue.required.includes('subjectRef'), 'subjectRef must be mandatory, not silently omittable');
+  assert.ok(dialogue.required.includes('offScreen'), 'offScreen must be mandatory too, or it is the next field a model silently drops');
 });
 
 test('a boundary ledger is not this scene’s cast — continuationFrom and offStage stay free', () => {

@@ -40,7 +40,7 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 9,
-      "description": "Ordered visible references for this scene. Put the most important subjects first and the location last. Every entry must be used by at least one shot.",
+      "description": "Ordered visible references for this scene. Put the most important subjects first and the location last. Every entry must be used by at least one shot. Ids must be DISTINCT — never declare the same id twice. 9 is a CEILING for a crowded scene, not a target to fill: declare only the subjects this scene actually shows, even if that is 2.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -229,6 +229,8 @@
               "type": "object",
               "additionalProperties": false,
               "required": [
+                "subjectRef",
+                "offScreen",
                 "speakerId",
                 "language",
                 "exactWords",
@@ -240,7 +242,7 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 8,
-                  "description": "0-based POSITION in references[] of the character who owns this voice. An OFF-SCREEN speaker who has no plate in this scene is the one exception: omit subjectRef and set offScreen true."
+                  "description": "REQUIRED on every line, on screen or not. 0-based POSITION in references[] of the character who owns this voice. Every declared reference already has an anchor plate on disk (requireAssetIn), so an off-screen speaker still points at their own plate here — set offScreen true rather than omitting this field. There is no unplated speaker in this bundle."
                 },
                 "speakerId": {
                   "type": "string",
@@ -264,7 +266,7 @@
                 },
                 "offScreen": {
                   "type": "boolean",
-                  "description": "True when the speaker is heard but not seen in this shot. REQUIRED to be true for any speaker who has no acting entry in this shot, since acting[] is what puts a character on screen. The runner then writes the official off-screen voiceover phrasing."
+                  "description": "REQUIRED on every line — state it explicitly rather than leaving it to be inferred. True when the speaker is heard but not seen in this shot: true for any speaker who has no acting entry in this shot, since acting[] is what puts a character on screen. The runner then writes the official off-screen voiceover phrasing."
                 }
               }
             }
