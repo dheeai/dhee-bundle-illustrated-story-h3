@@ -1,0 +1,203 @@
+{
+  "spokenLines": [],
+  "style": "Cinematic photoreal film stills with a high-fidelity digital cinema finish, emphasizing realistic skin textures and soft diffused practical lighting. The aesthetic features a muted beige-and-blue grade with shallow depth of field to isolate subjects against blurred backgrounds.",
+  "summary": "[reference generation] Keerti pours warm water over the Narrator’s shoulders, offering physical relief. The Narrator closes his eyes as steam thickens the air, establishing a quiet, intimate atmosphere of care.",
+  "references": [
+    {
+      "id": "narrator",
+      "type": "character",
+      "appearsAs": "Middle-aged/elderly male, frail, pale, graying/balding. Shirt partially unbuttoned, upper torso exposed.",
+      "job": "his frail face, gray hair, and exposed upper torso",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "keerti",
+      "type": "character",
+      "appearsAs": "Indian woman, mid-20s, slender with voluptuous curves, round face, warm brown skin, long dark hair. Wearing a loose white kurta over blue jeans.",
+      "job": "her face, white kurta, and gentle demeanor",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "bathroom",
+      "type": "location",
+      "appearsAs": "A domestic bathroom with white porcelain tiles and beige cream walls. Features a standard bathtub and a sturdy chair. The space is enclosed and intimate, with soft, diffused lighting creating a warm, steamy atmosphere.",
+      "job": "the white porcelain bathtub, tiled walls, and steamy atmosphere",
+      "retention": "fully_preserved"
+    }
+  ],
+  "shots": [
+    {
+      "id": "scene_3_shot_1",
+      "startTime": 0,
+      "endTime": 5.03,
+      "composition": "Medium shot. Keerti stands in the right third, leaning slightly forward. The Narrator is in the left third, standing before the bathtub. Keerti lifts a vessel of warm water, pouring it over the Narrator’s shoulders.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Administering care with focus",
+          "observableBehavior": "Leans forward, arms steady, gaze fixed on the water hitting his skin.",
+          "beatChange": "Maintains steady, rhythmic pouring motion."
+        },
+        {
+          "subjectRef": 0,
+          "tactic": "Receiving relief",
+          "observableBehavior": "Shoulders relax slightly under the water, face turns upward briefly.",
+          "beatChange": "Transitions from tension to physical softening."
+        }
+      ],
+      "action": "Keerti pours warm water over the Narrator’s shoulders.",
+      "cameraMotion": "Static Shot",
+      "sound": "Soft splash of warm water, faint steam hiss.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    },
+    {
+      "id": "scene_3_shot_2",
+      "startTime": 5.03,
+      "endTime": 10.06,
+      "composition": "Close-up on the Narrator’s face. Steam drifts in the foreground, slightly blurring the edges. His eyes are closed, expression softening from pain to relief.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Surrendering to sensation",
+          "observableBehavior": "Eyes closed, jaw unclenches, a deep sigh escapes.",
+          "beatChange": "Visible release of physical tension."
+        }
+      ],
+      "action": "The Narrator closes his eyes, absorbing the warmth and relief.",
+      "cameraMotion": "Push In",
+      "sound": "Deep exhale, ambient steam atmosphere.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    },
+    {
+      "id": "scene_3_shot_3",
+      "startTime": 10.06,
+      "endTime": 15.08,
+      "composition": "Medium-wide shot. Both figures visible in the steam-filled bathroom. Keerti stands attentively in the right third, watching him. The Narrator remains still in the left third, enveloped by the warmth.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Observing with tenderness",
+          "observableBehavior": "Stands still, hands resting, gaze soft and focused on him.",
+          "beatChange": "Holds a quiet, nurturing presence."
+        },
+        {
+          "subjectRef": 0,
+          "tactic": "Resting",
+          "observableBehavior": "Upright but relaxed, stillness.",
+          "beatChange": "Maintains state of relief."
+        }
+      ],
+      "action": "Keerti watches the Narrator as he absorbs the warmth, sharing a quiet moment of intimacy.",
+      "cameraMotion": "Static Shot",
+      "sound": "Quiet room tone, faint steam hiss.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    }
+  ],
+  "overallSoundscape": "Quiet domestic atmosphere with soft ambient room tone, the gentle splash of water, and the faint hiss of rising steam.",
+  "nonDiegeticMusic": "N/A",
+  "negatives": [
+    "subtitles",
+    "extra people",
+    "anachronistic props",
+    "soft dissolves",
+    "redesigned reference",
+    "speech",
+    "voiceover"
+  ],
+  "duration": 15.08,
+  "speechSeconds": 0,
+  "purpose": "Keerti pours warm water over the Narrator, providing physical relief and establishing a quiet, intimate atmosphere of care.",
+  "shotStructure": "multi_cut",
+  "renderComplexity": "moderate",
+  "performance": {
+    "objective": "To provide soothing physical relief through the act of pouring water.",
+    "obstacle": "Maintaining a gentle, non-intrusive presence while managing the physical task.",
+    "stakes": "Deepening the trust established in the previous scene through sensory comfort.",
+    "physicalBusiness": "Pouring water, steady hands, attentive gaze; Narrator relaxing shoulders and exhaling.",
+    "bodyState": "Keerti is focused and calm; Narrator is frail but visibly relaxing.",
+    "eyeLife": "Keerti's gaze is soft and fixed on the Narrator; Narrator's eyes are closed in relief."
+  },
+  "continuationAnchor": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Left background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectRef": 0,
+        "screenPosition": "Standing near tub, left third",
+        "facing": "Right",
+        "pose": "Upright, relaxed, eyes closed"
+      },
+      {
+        "subjectRef": 1,
+        "screenPosition": "Standing before him, center-right",
+        "facing": "Left",
+        "pose": "Upright, hands resting, attentive"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, increased steam density.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Partially unbuttoned, damp shoulders"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Dry, loose"
+      }
+    ]
+  },
+  "continuationFrom": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Left background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectId": "narrator",
+        "screenPosition": "Standing near tub, left third",
+        "facing": "Right",
+        "pose": "Upright, shirt partially unbuttoned"
+      },
+      {
+        "subjectId": "keerti",
+        "screenPosition": "Standing before him, center",
+        "facing": "Left",
+        "pose": "Upright, hands on shirt"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Partially unbuttoned"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Dry, loose"
+      }
+    ]
+  }
+}

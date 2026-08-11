@@ -1,0 +1,233 @@
+{
+  "spokenLines": [
+    "Keerti, why don't you take off your kurta so it doesn't get completely soaked? ...Think of it as adapting to the situation. It's just the two of us here.",
+    "I... I don't know.",
+    "Absolutely... Your comfort is important too."
+  ],
+  "style": "Cinematic photoreal film stills with a high-fidelity digital cinema finish, emphasizing realistic skin textures and fabric details. The aesthetic features a muted beige-and-blue grade with shallow depth of field to isolate subjects against blurred backgrounds.",
+  "summary": "[reference generation] The Narrator suggests Keerti remove her wet kurta to prevent further soaking; Keerti hesitates, looking at her damp clothes, before the Narrator insists on her comfort, establishing a moment of mutual care and intimacy.",
+  "references": [
+    {
+      "id": "narrator",
+      "type": "character",
+      "appearsAs": "Middle-aged/elderly male, frail, pale, graying/balding. Shirt partially unbuttoned, upper torso exposed, seated in the bathtub.",
+      "job": "his frail face, gray hair, and exposed upper torso",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "keerti",
+      "type": "character",
+      "appearsAs": "Indian woman, mid-20s, slender with voluptuous curves, round face, warm brown skin, long dark hair. Wearing a loose white kurta over blue jeans, now soaked and clinging tightly.",
+      "job": "her face, white kurta, and gentle demeanor",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "bathroom",
+      "type": "location",
+      "appearsAs": "A domestic bathroom with white porcelain tiles and beige cream walls. Features a standard bathtub and a sturdy chair. The space is enclosed and intimate, with soft, diffused lighting creating a warm, steamy atmosphere.",
+      "job": "the white porcelain bathtub, tiled walls, and steamy atmosphere",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "white_kurta",
+      "type": "object",
+      "appearsAs": "A loose-fitting, traditional Indian tunic in soft porcelain white, now darkened and clinging tightly to Keerti's body due to being soaked.",
+      "job": "the wet, translucent fabric clinging to her form",
+      "retention": "fully_preserved"
+    }
+  ],
+  "shots": [
+    {
+      "id": "scene_5_shot_1",
+      "startTime": 0,
+      "endTime": 5.36,
+      "composition": "Medium shot. The Narrator is seated in the bathtub, centered or slightly left, looking up. Keerti is out of frame or blurred in the background right. Steam swirls softly in the foreground.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Offering a practical suggestion",
+          "observableBehavior": "Looks up calmly, face relaxed, slight smile, steady gaze, head tilted slightly toward Keerti.",
+          "beatChange": "Transitions from passive recipient to active proposer."
+        }
+      ],
+      "action": "The Narrator speaks to Keerti, suggesting she remove her wet kurta, framing it as a practical adaptation.",
+      "cameraMotion": "Static Shot",
+      "sound": "Ambient steam atmosphere, low room tone.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": [
+        {
+          "speakerId": "S1",
+          "language": "English",
+          "exactWords": "Keerti, why don't you take off your kurta so it doesn't get completely soaked? ...Think of it as adapting to the situation. It's just the two of us here.",
+          "delivery": "gentle, reassuring",
+          "voicePrompt": "Middle-aged to elderly male voice, soft and slightly breathy timbre, warm register, slow and deliberate pace, dropping in pitch under pain.",
+          "offScreen": false,
+          "subjectRef": 0
+        }
+      ]
+    },
+    {
+      "id": "scene_5_shot_2",
+      "startTime": 5.36,
+      "endTime": 10.22,
+      "composition": "Medium shot. Keerti stands in the right third, beside the bathtub. She looks down at her chest, hands slightly raised in a modest gesture. The Narrator is out of frame or blurred in the background left.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Processing the suggestion with hesitation",
+          "observableBehavior": "Looks down at her wet kurta, shoulders hike slightly toward ears, eyes drop, slight blink.",
+          "beatChange": "Maintains a posture of modest uncertainty."
+        }
+      ],
+      "action": "Keerti listens to the suggestion, appearing hesitant and looking at her soaked clothes.",
+      "cameraMotion": "Static Shot",
+      "sound": "Faint steam hiss, rustle of wet fabric as she shifts weight.",
+      "sceneryRefs": [
+        2,
+        3
+      ],
+      "dialogue": [
+        {
+          "speakerId": "S2",
+          "language": "English",
+          "exactWords": "I... I don't know.",
+          "delivery": "hesitant, shy",
+          "voicePrompt": "Mid-20s Indian female, warm and melodic timbre, soft register, moderate pace that quickens slightly under nervousness, smoothing out when focused on caregiving.",
+          "offScreen": false,
+          "subjectRef": 1
+        }
+      ]
+    },
+    {
+      "id": "scene_5_shot_3",
+      "startTime": 10.22,
+      "endTime": 15.08,
+      "composition": "Medium shot. The Narrator is seated in the bathtub, centered or slightly left, nodding slowly. His face softens with empathy. Steam rises between them.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Reassuring and insisting",
+          "observableBehavior": "Nods slowly, eyes warm, slight smile, steady gaze directed at Keerti.",
+          "beatChange": "Confirms the suggestion with warmth."
+        }
+      ],
+      "action": "The Narrator offers final encouragement, emphasizing that Keerti's comfort is also important.",
+      "cameraMotion": "Static Shot",
+      "sound": "Quiet room tone, faint fabric shift.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": [
+        {
+          "speakerId": "S1",
+          "language": "English",
+          "exactWords": "Absolutely... Your comfort is important too.",
+          "delivery": "warm, insistent",
+          "voicePrompt": "Middle-aged to elderly male voice, soft and slightly breathy timbre, warm register, slow and deliberate pace, dropping in pitch under pain.",
+          "offScreen": false,
+          "subjectRef": 0
+        }
+      ]
+    }
+  ],
+  "overallSoundscape": "Quiet domestic atmosphere with soft ambient room tone, the gentle hiss of rising steam, and the faint rustle of wet fabric.",
+  "nonDiegeticMusic": "N/A",
+  "negatives": [
+    "subtitles",
+    "extra people",
+    "anachronistic props",
+    "soft dissolves",
+    "redesigned reference",
+    "speech",
+    "voiceover"
+  ],
+  "duration": 15.08,
+  "speechSeconds": 11,
+  "purpose": "The Narrator suggests Keerti remove her wet kurta for comfort; Keerti hesitates before he reassures her, deepening the intimacy.",
+  "shotStructure": "multi_cut",
+  "renderComplexity": "moderate",
+  "performance": {
+    "objective": "To navigate the awkwardness of accidental physical exposure and restore comfort.",
+    "obstacle": "Keerti's modesty and self-consciousness about her wet, clinging attire.",
+    "stakes": "Maintaining the professional yet intimate dynamic without letting embarrassment disrupt the care.",
+    "physicalBusiness": "Narrator looking up calmly, smiling gently, nodding slowly; Keerti looking down, hands fluttering to smooth fabric, then relaxing.",
+    "bodyState": "Narrator is calm and seated; Keerti is initially tense and self-conscious, then relaxes.",
+    "eyeLife": "Narrator's gaze is steady and warm, holding eye contact to reassure; Keerti's gaze drops to her clothes then lifts to the Narrator."
+  },
+  "continuationAnchor": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectRef": 0,
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Upright, relaxed, eyes open, slight smile"
+      },
+      {
+        "subjectRef": 1,
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Upright, hands resting, slight smile, relaxed shoulders"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Partially unbuttoned, damp shoulders"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Soaked, darkened, clinging tightly"
+      }
+    ]
+  },
+  "continuationFrom": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectId": "narrator",
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Upright, relaxed, eyes open"
+      },
+      {
+        "subjectId": "keerti",
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Upright, hands resting, slight smile"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Partially unbuttoned, damp shoulders"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Soaked, darkened, clinging tightly"
+      }
+    ]
+  }
+}

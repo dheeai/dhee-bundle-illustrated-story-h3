@@ -1,0 +1,239 @@
+{
+  "spokenLines": [
+    "Keerti, tonight is going to be a very hard one for me. I am really thankful that you helped relieve the pain. I am pretty sure you will make a great nurse when you graduate."
+  ],
+  "style": "Cinematic photoreal film stills with a high-fidelity digital cinema finish, emphasizing realistic skin textures and fabric details. The aesthetic features a muted beige-and-blue grade with shallow depth of field to isolate subjects against blurred backgrounds.",
+  "summary": "[reference generation] Keerti assists the Narrator into fresh underwear, completing the physical care task. The Narrator expresses gratitude, acknowledging the difficulty of the night and praising Keerti's future potential as a nurse. The scene closes on Keerti's modest, reassuring smile.",
+  "references": [
+    {
+      "id": "narrator",
+      "type": "character",
+      "appearsAs": "Middle-aged/elderly male, frail, pale, graying/balding. Naked above the waist, seated in the bathtub, now wearing fresh underwear.",
+      "job": "his frail face, gray hair, and exposed upper torso",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "keerti",
+      "type": "character",
+      "appearsAs": "Indian woman, mid-20s, slender with voluptuous curves, round face, warm brown skin, long dark hair. Wearing a white bra and blue jeans.",
+      "job": "her face, white bra, and gentle demeanor",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "bathroom",
+      "type": "location",
+      "appearsAs": "A domestic bathroom with white porcelain tiles and beige cream walls. Features a standard bathtub. The space is enclosed and intimate, with soft, diffused lighting creating a warm, steamy atmosphere.",
+      "job": "the white porcelain bathtub, tiled walls, and steamy atmosphere",
+      "retention": "fully_preserved"
+    }
+  ],
+  "shots": [
+    {
+      "id": "scene_11_shot_1",
+      "startTime": 0,
+      "endTime": 4.56,
+      "composition": "Medium shot. Keerti stands beside the tub on the right, hands gently adjusting the fresh underwear around the Narrator's waist. The Narrator sits in the tub on the left, looking up at her. Steam swirls softly between them.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Executing care with professional steadiness",
+          "observableBehavior": "Hands move carefully to adjust the fabric at his waist; expression focused and kind. Shoulders relaxed, indicating task completion.",
+          "beatChange": "Completes the physical adjustment of the garment."
+        },
+        {
+          "subjectRef": 0,
+          "tactic": "Expressing gratitude and relief",
+          "observableBehavior": "Looks up at Keerti with a frail but sincere expression. Face softened by steam and warm light.",
+          "beatChange": "Initiates verbal thanks."
+        }
+      ],
+      "action": "Keerti finishes helping the Narrator into fresh underwear; he looks up and speaks with gratitude.",
+      "cameraMotion": "Static Shot",
+      "sound": "Soft fabric rustle, gentle steam hiss, quiet room tone.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": [
+        {
+          "speakerId": "S1",
+          "language": "English",
+          "exactWords": "Keerti, tonight is going to be a very hard one for me. I am really thankful that you helped relieve the pain. I am pretty sure you will make a great nurse when you graduate.",
+          "delivery": "warm, grateful, and frail",
+          "voicePrompt": "Middle-aged to elderly male voice, soft and slightly breathy timbre, warm register, slow and deliberate pace, dropping in pitch under pain.",
+          "offScreen": false,
+          "subjectRef": 0
+        }
+      ]
+    },
+    {
+      "id": "scene_11_shot_2",
+      "startTime": 4.56,
+      "endTime": 9.12,
+      "composition": "Close-up on the Narrator's face. He wears a frail but sincere smile. His hands rest on his knees. The background is blurred steam and tile.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Holding the moment of relief",
+          "observableBehavior": "Maintains eye contact with Keerti, smile sustained. Posture remains weak but face shows deep appreciation.",
+          "beatChange": "Holds the emotional beat of gratitude."
+        }
+      ],
+      "action": "The Narrator holds his grateful expression, resting his hands on his knees.",
+      "cameraMotion": "Static Shot",
+      "sound": "Soft breath, subtle room tone.",
+      "sceneryRefs": [
+        2
+      ]
+    },
+    {
+      "id": "scene_11_shot_3",
+      "startTime": 9.12,
+      "endTime": 13.67,
+      "composition": "Medium close-up on Keerti. She offers a soft, modest smile. Her hands are clasped loosely in front of her. Steam drifts softly behind her.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Responding with modest reassurance",
+          "observableBehavior": "Smiles warmly, eyes softening. Steps back slightly, hands clasped, signaling the end of the task.",
+          "beatChange": "Completes the interaction with a reassuring gesture."
+        }
+      ],
+      "action": "Keerti smiles warmly and steps back, signaling the completion of the task.",
+      "cameraMotion": "Static Shot",
+      "sound": "Soft fabric rustle, gentle steam hiss.",
+      "sceneryRefs": [
+        2
+      ]
+    }
+  ],
+  "overallSoundscape": "Quiet domestic atmosphere with soft ambient room tone, the gentle hiss of rising steam, and the subtle rustle of fabric and movement.",
+  "nonDiegeticMusic": "N/A",
+  "negatives": [
+    "subtitles",
+    "extra people",
+    "anachronistic props",
+    "soft dissolves",
+    "redesigned reference",
+    "speech",
+    "voiceover"
+  ],
+  "duration": 13.67,
+  "speechSeconds": 9.5,
+  "purpose": "Keerti completes the task of dressing the Narrator in fresh underwear, and he expresses his gratitude for her care.",
+  "shotStructure": "multi_cut",
+  "renderComplexity": "moderate",
+  "performance": {
+    "objective": "To convey the completion of the care task and the Narrator's sincere gratitude.",
+    "obstacle": "The physical frailty of the Narrator and the modesty of the interaction.",
+    "stakes": "Establishing mutual respect and relief after the intimate care sequence.",
+    "physicalBusiness": "Keerti adjusting underwear, then clasping hands; Narrator looking up, smiling, resting hands on knees.",
+    "bodyState": "Keerti shifts from active care to relaxed completion; Narrator remains frail but emotionally uplifted.",
+    "eyeLife": "Narrator maintains warm, grateful gaze; Keerti responds with soft, reassuring eye contact."
+  },
+  "continuationAnchor": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Towel hook",
+        "screenPosition": "Right wall, mid-height"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectRef": 0,
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Wearing fresh underwear, smiling, hands resting on knees"
+      },
+      {
+        "subjectRef": 1,
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Smiling modestly, hands clasped loosely in front, stepping back slightly"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Removed"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Hanging on towel hook, wet and darkened"
+      },
+      {
+        "name": "Keerti's bra",
+        "state": "Visible, white"
+      },
+      {
+        "name": "Keerti's jeans",
+        "state": "Blue, fitted"
+      },
+      {
+        "name": "Narrator's fresh underwear",
+        "state": "On, adjusted"
+      }
+    ]
+  },
+  "continuationFrom": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Towel hook",
+        "screenPosition": "Right wall, mid-height"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectId": "narrator",
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Naked, fully exposed, looking down or eyes closed, accepting care"
+      },
+      {
+        "subjectId": "keerti",
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Hands holding removed soiled underwear, gaze focused on task"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Removed"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Hanging on towel hook, wet and darkened"
+      },
+      {
+        "name": "Keerti's bra",
+        "state": "Visible, white"
+      },
+      {
+        "name": "Keerti's jeans",
+        "state": "Blue, fitted"
+      },
+      {
+        "name": "Narrator's soiled underwear",
+        "state": "Removed, in Keerti's hands"
+      }
+    ]
+  }
+}

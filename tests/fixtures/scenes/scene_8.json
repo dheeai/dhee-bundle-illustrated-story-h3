@@ -1,0 +1,233 @@
+{
+  "spokenLines": [],
+  "style": "Cinematic photoreal film stills with a high-fidelity digital cinema finish, emphasizing realistic skin textures and fabric details. The aesthetic features a muted beige-and-blue grade with shallow depth of field to isolate subjects against blurred backgrounds.",
+  "summary": "[reference generation] Keerti assists the frail Narrator as he rises from the bathtub. He winces in pain and wraps his arms around her waist for support, resting his head against her chest in a moment of vulnerable intimacy.",
+  "references": [
+    {
+      "id": "narrator",
+      "type": "character",
+      "appearsAs": "Middle-aged/elderly male, frail, pale, graying/balding. Naked above the waist, seated in the bathtub, wearing fresh underwear.",
+      "job": "his frail face, gray hair, and exposed upper torso",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "keerti",
+      "type": "character",
+      "appearsAs": "Indian woman, mid-20s, slender with voluptuous curves, round face, warm brown skin, long dark hair. Wearing a white bra and blue jeans.",
+      "job": "her face, white bra, and gentle demeanor",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "bathroom",
+      "type": "location",
+      "appearsAs": "A domestic bathroom with white porcelain tiles and beige cream walls. Features a standard bathtub. The space is enclosed and intimate, with soft, diffused lighting creating a warm, steamy atmosphere.",
+      "job": "the white porcelain bathtub, tiled walls, and steamy atmosphere",
+      "retention": "fully_preserved"
+    }
+  ],
+  "shots": [
+    {
+      "id": "scene_8_shot_1",
+      "startTime": 0,
+      "endTime": 5,
+      "composition": "Medium shot. Keerti stands beside the tub on the right, leaning forward. The Narrator sits in the tub on the left, shifting his weight. Steam swirls between them.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Offering steady physical support",
+          "observableBehavior": "Leans in, hands placed firmly on Narrator's arms/shoulders, expression focused and gentle.",
+          "beatChange": "Initiates the physical connection."
+        },
+        {
+          "subjectRef": 0,
+          "tactic": "Attempting to rise despite pain",
+          "observableBehavior": "Shifts weight, muscles tense, looking up at Keerti.",
+          "beatChange": "Transitions from seated rest to active effort."
+        }
+      ],
+      "action": "Keerti reaches out to support the Narrator as he attempts to shift his weight in the bathtub.",
+      "cameraMotion": "Static Shot",
+      "sound": "Water sloshing, soft steam hiss, quiet room tone.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    },
+    {
+      "id": "scene_8_shot_2",
+      "startTime": 5,
+      "endTime": 10,
+      "composition": "Medium close-up. The Narrator is centered, rising slightly. Keerti is visible on the periphery, holding him. The background is blurred steam and tile.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Reacting to sharp pain while seeking stability",
+          "observableBehavior": "Winces visibly, eyes squeeze shut briefly, arms wrap tightly around Keerti's waist.",
+          "beatChange": "Shifts from effort to vulnerability."
+        },
+        {
+          "subjectRef": 1,
+          "tactic": "Steadying him instinctively",
+          "observableBehavior": "Holds him firm, gaze softening with concern, body still.",
+          "beatChange": "Accepts the burden of his weight."
+        }
+      ],
+      "action": "The Narrator winces in pain, his frail arms wrapping tightly around Keerti's waist for stability as she holds him steady.",
+      "cameraMotion": "Push In",
+      "sound": "Sharp intake of breath, fabric rustle, ambient steam.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    },
+    {
+      "id": "scene_8_shot_3",
+      "startTime": 10,
+      "endTime": 15.08,
+      "composition": "Close-up. The Narrator's head rests against Keerti's chest. Keerti's hands are on his back/shoulders. Steam fills the frame.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Surrendering to relief and intimacy",
+          "observableBehavior": "Eyes closed, expression relaxed but vulnerable, breathing deep.",
+          "beatChange": "Settles into stillness."
+        },
+        {
+          "subjectRef": 1,
+          "tactic": "Holding the moment of connection",
+          "observableBehavior": "Remains still, gaze lowered or closed, posture nurturing and steady.",
+          "beatChange": "Sustains the intimate embrace."
+        }
+      ],
+      "action": "The Narrator rests his head against Keerti's chest, his eyes closed in relief and vulnerability, while Keerti remains still, holding him in the steam-filled air.",
+      "cameraMotion": "Static Shot",
+      "sound": "Quiet breathing, soft room tone.",
+      "sceneryRefs": [
+        2
+      ],
+      "dialogue": []
+    }
+  ],
+  "overallSoundscape": "Quiet domestic atmosphere with soft ambient room tone, the gentle hiss of rising steam, water movement, and the rustle of fabric.",
+  "nonDiegeticMusic": "N/A",
+  "negatives": [
+    "subtitles",
+    "extra people",
+    "anachronistic props",
+    "soft dissolves",
+    "redesigned reference",
+    "speech",
+    "voiceover"
+  ],
+  "duration": 15.08,
+  "speechSeconds": 0,
+  "purpose": "Keerti assists the Narrator in rising from the tub, leading to an intimate embrace that highlights his vulnerability and her nurturing care.",
+  "shotStructure": "multi_cut",
+  "renderComplexity": "moderate",
+  "performance": {
+    "objective": "To establish physical intimacy and trust through the act of care.",
+    "obstacle": "The Narrator's physical pain and frailty; Keerti's modesty and duty.",
+    "stakes": "Defining the nature of their relationship as one of tender reliance.",
+    "physicalBusiness": "Narrator shifting weight, wincing, wrapping arms; Keerti leaning in, holding, remaining still.",
+    "bodyState": "Narrator moves from seated tension to relaxed vulnerability; Keerti moves from active support to steady stillness.",
+    "eyeLife": "Narrator looks up, then closes eyes in relief; Keerti maintains focused, gentle gaze."
+  },
+  "continuationAnchor": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Towel hook",
+        "screenPosition": "Right wall, mid-height"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectRef": 0,
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Leaning against Keerti, head on her chest, eyes closed, arms around her waist"
+      },
+      {
+        "subjectRef": 1,
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Upright, holding Narrator, hands on his back/shoulders"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Removed"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Hanging on towel hook, wet and darkened"
+      },
+      {
+        "name": "Keerti's bra",
+        "state": "Visible, white"
+      },
+      {
+        "name": "Keerti's jeans",
+        "state": "Blue, fitted"
+      }
+    ]
+  },
+  "continuationFrom": {
+    "fixedLandmarks": [
+      {
+        "name": "Bathtub",
+        "screenPosition": "Left/Center background"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      },
+      {
+        "name": "Towel hook",
+        "screenPosition": "Right wall, mid-height"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectId": "narrator",
+        "screenPosition": "Seated in tub, left/center",
+        "facing": "Right",
+        "pose": "Upright, relaxed, eyes open, slight smile"
+      },
+      {
+        "subjectId": "keerti",
+        "screenPosition": "Standing beside tub, right third",
+        "facing": "Left",
+        "pose": "Upright, relaxed, hands at sides"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin, steam density consistent.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt",
+        "state": "Removed"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Hanging on towel hook, wet and darkened"
+      },
+      {
+        "name": "Keerti's bra",
+        "state": "Visible, white"
+      },
+      {
+        "name": "Keerti's jeans",
+        "state": "Blue, fitted"
+      }
+    ]
+  }
+}

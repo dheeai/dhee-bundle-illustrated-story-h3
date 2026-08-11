@@ -1,0 +1,216 @@
+{
+  "spokenLines": [
+    "It's just the arthritis acting up again. I was wondering, Keerti, if you could help me with something.",
+    "Of course. What do you need?",
+    "I was hoping you could assist me with a bath. The warm water usually helps ease the pain... I hate to impose, but today has been particularly challenging."
+  ],
+  "style": "Cinematic photoreal film stills with a high-fidelity digital cinema finish, emphasizing realistic skin textures and soft diffused practical lighting. The aesthetic features a muted beige-and-blue grade with shallow depth of field to isolate subjects against blurred backgrounds.",
+  "summary": "[reference generation] The scene establishes the Narrator in physical pain and Keerti as the caregiver. It defines the intimate bathroom setting and the initial dynamic of vulnerability and gentle assistance.",
+  "references": [
+    {
+      "id": "narrator",
+      "type": "character",
+      "appearsAs": "Middle-aged/elderly male, frail, pale, graying/balding. Wearing a simple shirt and trousers.",
+      "job": "his frail face, gray hair, and pained expression",
+      "retention": "fully_preserved"
+    },
+    {
+      "id": "keerti",
+      "type": "character",
+      "appearsAs": "Indian woman, mid-20s, slender with voluptuous curves, round face, warm brown skin, long dark hair. Wearing a loose white kurta over blue jeans.",
+      "job": "her face, white kurta, and gentle demeanor",
+      "retention": "fully_preserved"
+    }
+  ],
+  "shots": [
+    {
+      "id": "scene_1_shot_1",
+      "startTime": 0,
+      "endTime": 5,
+      "composition": "Medium shot. The Narrator sits slumped in a sturdy chair in the left third, gripping the armrests. Keerti stands in the right third, slightly behind him, watching him.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Enduring pain",
+          "observableBehavior": "Slumped posture, hands gripping armrests, winces visibly.",
+          "beatChange": "Shifts from passive suffering to active request."
+        },
+        {
+          "subjectRef": 1,
+          "tactic": "Observing with concern",
+          "observableBehavior": "Stands still, gaze fixed on the Narrator, expression soft.",
+          "beatChange": "Maintains attentive presence."
+        }
+      ],
+      "action": "The Narrator winces in pain; Keerti watches him with concern.",
+      "cameraMotion": "Static Shot",
+      "sound": "Low hum of the room, faint rustle of fabric.",
+      "sceneryRefs": [],
+      "dialogue": [
+        {
+          "speakerId": "S1",
+          "language": "English",
+          "exactWords": "It's just the arthritis acting up again. I was wondering, Keerti, if you could help me with something.",
+          "delivery": "pained, tentative",
+          "voicePrompt": "Middle-aged to elderly male voice, soft and slightly breathy timbre, warm register, slow and deliberate pace, dropping in pitch under pain.",
+          "offScreen": false,
+          "subjectRef": 0
+        }
+      ]
+    },
+    {
+      "id": "scene_1_shot_2",
+      "startTime": 5,
+      "endTime": 10,
+      "composition": "Medium close-up on Keerti. She steps slightly closer, filling more of the frame.",
+      "acting": [
+        {
+          "subjectRef": 1,
+          "tactic": "Responding with readiness",
+          "observableBehavior": "Steps forward, shoulders relaxed, gaze warm and direct.",
+          "beatChange": "Transitions from observation to engagement."
+        }
+      ],
+      "action": "Keerti steps closer, her demeanor calm and attentive.",
+      "cameraMotion": "Static Shot",
+      "sound": "Soft footsteps on tile.",
+      "sceneryRefs": [],
+      "dialogue": [
+        {
+          "speakerId": "S2",
+          "language": "English",
+          "exactWords": "Of course. What do you need?",
+          "delivery": "gentle, ready",
+          "voicePrompt": "Mid-20s Indian female, warm and melodic timbre, soft register, moderate pace that quickens slightly under nervousness, smoothing out when focused on caregiving.",
+          "offScreen": false,
+          "subjectRef": 1
+        }
+      ]
+    },
+    {
+      "id": "scene_1_shot_3",
+      "startTime": 10,
+      "endTime": 15.08,
+      "composition": "Medium shot of the Narrator. He looks up, his face showing vulnerability.",
+      "acting": [
+        {
+          "subjectRef": 0,
+          "tactic": "Appealing for help",
+          "observableBehavior": "Looks up, eyes softening, slight nod.",
+          "beatChange": "Expresses relief and gratitude."
+        }
+      ],
+      "action": "The Narrator looks up at her, his face showing vulnerability and relief.",
+      "cameraMotion": "Static Shot",
+      "sound": "Quiet ambient room tone.",
+      "sceneryRefs": [],
+      "dialogue": [
+        {
+          "speakerId": "S1",
+          "language": "English",
+          "exactWords": "I was hoping you could assist me with a bath. The warm water usually helps ease the pain... I hate to impose, but today has been particularly challenging.",
+          "delivery": "vulnerable, appreciative",
+          "voicePrompt": "Middle-aged to elderly male voice, soft and slightly breathy timbre, warm register, slow and deliberate pace, dropping in pitch under pain.",
+          "offScreen": false,
+          "subjectRef": 0
+        }
+      ]
+    }
+  ],
+  "overallSoundscape": "Quiet domestic atmosphere with soft ambient room tone, faint rustle of fabric, and soft footsteps on tile.",
+  "nonDiegeticMusic": "N/A",
+  "negatives": [
+    "subtitles",
+    "extra people",
+    "anachronistic props",
+    "soft dissolves",
+    "redesigned reference"
+  ],
+  "duration": 15.08,
+  "speechSeconds": 12.5,
+  "purpose": "The Narrator requests a bath from Keerti, establishing the scene's core dynamic of vulnerability and care.",
+  "shotStructure": "multi_cut",
+  "renderComplexity": "moderate",
+  "performance": {
+    "objective": "To secure assistance with a bath while managing physical pain.",
+    "obstacle": "Arthritis-induced discomfort and hesitation to impose.",
+    "stakes": "Relief from pain and dignity in receiving care.",
+    "physicalBusiness": "Gripping armrests, wincing, looking up.",
+    "bodyState": "Frail, contorted, pained.",
+    "eyeLife": "Respectful gaze, softening when seeking help."
+  },
+  "continuationAnchor": {
+    "fixedLandmarks": [
+      {
+        "name": "Sturdy chair",
+        "screenPosition": "Left third"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectRef": 0,
+        "screenPosition": "Seated in chair, left third",
+        "facing": "Slightly right",
+        "pose": "Slumped, gripping armrests"
+      },
+      {
+        "subjectRef": 1,
+        "screenPosition": "Standing near doorway, right third",
+        "facing": "Left",
+        "pose": "Upright, attentive"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt and trousers",
+        "state": "Worn"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Dry, loose"
+      }
+    ]
+  },
+  "continuationFrom": {
+    "fixedLandmarks": [
+      {
+        "name": "Sturdy chair",
+        "screenPosition": "Left third"
+      },
+      {
+        "name": "Bathroom doorway",
+        "screenPosition": "Right background"
+      }
+    ],
+    "characterPositions": [
+      {
+        "subjectId": "narrator",
+        "screenPosition": "Seated in chair, left third",
+        "facing": "Slightly right",
+        "pose": "Slumped, gripping armrests"
+      },
+      {
+        "subjectId": "keerti",
+        "screenPosition": "Standing near doorway, right third",
+        "facing": "Left",
+        "pose": "Upright, attentive"
+      }
+    ],
+    "lightingBaseline": "Soft, diffused practical lighting, warm amber highlights on skin.",
+    "propStates": [
+      {
+        "name": "Narrator's shirt and trousers",
+        "state": "Worn"
+      },
+      {
+        "name": "Keerti's white kurta",
+        "state": "Dry, loose"
+      }
+    ]
+  }
+}
