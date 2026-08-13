@@ -458,7 +458,34 @@ top of this prompt; find it in `scenes_plan.sections[]` and take its
 
 ### Narration
 
-{{narration}}
+Narrator voiceover enabled for this project: {{narration}}
+
+**A `narration`-mode section's words live in its `spokenLines` ledger on the scene
+plan, NOT on its shots.** `scene_detail` is forbidden from putting `dialogue` on a
+narration section's shots, so those shots arriving with no dialogue is CORRECT and is
+not permission to write your own.
+
+So for a `narration` section:
+
+1. **Find this section's entry in the scene plan above and copy its `spokenLines`
+   VERBATIM** into your own `spokenLines` — same words, same punctuation, same
+   language, same native script. This ledger is carried forward deterministically
+   and is the authoritative text.
+2. **Emit each of those lines as a spoken line with `offScreen: true`.** A narrator
+   is heard, not seen: nobody in frame may be shown mouthing these words. Set
+   `language` to the language the words are ACTUALLY written in.
+3. **If the ledger is empty or absent, the section is genuinely wordless** — emit
+   `spokenLines: []` and no dialogue at all. A wordless beat plays on action and
+   ambient sound.
+
+**NEVER invent a narration line, a call to action, a tagline or a sign-off.** You are
+not writing copy. A section whose `sceneBrief` says something like "voiceover
+delivers the call to action" is DESCRIBING words that already exist in the ledger —
+it is not a brief for you to write them. Measured: handed no ledger, this pass
+replaced a Hindi VO outro with invented English copy that told the viewer to download
+the very app the film was investigating — inverting the script's meaning. If you
+cannot find the words, emit none and leave the beat silent; a silent beat is
+recoverable, an invented claim is not.
 
 ### This section (`scene_detail`) — the ONLY section you author
 

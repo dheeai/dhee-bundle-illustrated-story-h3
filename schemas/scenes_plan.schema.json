@@ -20,7 +20,7 @@
     "sections": {
       "type": "array",
       "minItems": 2,
-      "description": "The story split into ordered beats \u2014 one narrated/spoken film clip each. Order = final screen order.",
+      "description": "The story split into ordered beats — one narrated/spoken film clip each. Order = final screen order.",
       "items": {
         "type": "object",
         "required": [
@@ -36,7 +36,7 @@
           "id": {
             "type": "string",
             "pattern": "^scene_[0-9]+$",
-            "description": "Sequential: scene_1, scene_2 \u2026 MUST use this exact form (not 's01') \u2014 the runner parses the scene number from it."
+            "description": "Sequential: scene_1, scene_2 … MUST use this exact form (not 's01') — the runner parses the scene number from it."
           },
           "heading": {
             "type": "string",
@@ -50,7 +50,7 @@
           "text": {
             "type": "string",
             "minLength": 120,
-            "description": "The actual story PROSE for this section, kept intact for reading (2\u20134 short paragraphs, blank-line separated). Displayed verbatim \u2014 do NOT summarise it away."
+            "description": "The actual story PROSE for this section, kept intact for reading (2–4 short paragraphs, blank-line separated). Displayed verbatim — do NOT summarise it away."
           },
           "caption": {
             "type": "string",
@@ -59,14 +59,14 @@
           "sceneBrief": {
             "type": "string",
             "minLength": 30,
-            "description": "The key visual EVENT/ACTION this section's shot(s) depict \u2014 name the action as the subject (e.g. 'a fist knocks on the door'), never a character before the story has introduced them. Prose, not a prompt."
+            "description": "The key visual EVENT/ACTION this section's shot(s) depict — name the action as the subject (e.g. 'a fist knocks on the door'), never a character before the story has introduced them. Prose, not a prompt."
           },
           "entities": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Bible ids (characters/locations/objects) VISIBLE across this section's shots \u2014 re-injected into shot prompts."
+            "description": "Bible ids (characters/locations/objects) VISIBLE across this section's shots — re-injected into shot prompts."
           },
           "mode": {
             "type": "string",
@@ -74,7 +74,14 @@
               "narration",
               "dialogue"
             ],
-            "description": "'dialogue' iff a character SPEAKS in this beat \u2014 the story gives them a line, direct or faithfully-converted reported speech; otherwise 'narration'. Classified honestly from the story: a dialogue-rich story correctly yields mostly dialogue sections."
+            "description": "'dialogue' iff a character SPEAKS in this beat — the story gives them a line, direct or faithfully-converted reported speech; otherwise 'narration'. Classified honestly from the story: a dialogue-rich story correctly yields mostly dialogue sections."
+          },
+          "spokenLines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact spoken-word ledger for this section, carried forward DETERMINISTICALLY by plan.assemble_keyframes from the scene outline (never re-authored by a model, so it cannot drift). This is the authoritative source the scene_video_prompt pass copies its own spokenLines from. It is REQUIRED for a narration-mode section that is voiced: scene_detail may not put dialogue on a narration section's shots, so this ledger is the ONLY path those words have to the render -- without it the video-prompt pass has nothing to copy and invents the narration. Empty/absent means genuinely wordless."
           }
         }
       }
@@ -97,7 +104,7 @@
           "id": {
             "type": "string",
             "pattern": "^scene_[0-9]+_shot_[0-9]+$",
-            "description": "MUST be 'scene_<sectionNumber>_shot_<shotNumber>' \u2014 e.g. the 2nd shot of scene_3 is 'scene_3_shot_2'. The runner keys first-frame images and audio by this exact id."
+            "description": "MUST be 'scene_<sectionNumber>_shot_<shotNumber>' — e.g. the 2nd shot of scene_3 is 'scene_3_shot_2'. The runner keys first-frame images and audio by this exact id."
           },
           "characterPresence": {
             "type": "string",
@@ -105,7 +112,7 @@
               "none",
               "character"
             ],
-            "description": "Which anchors the video-prompt stage lists as this shot's references[], and how it composes the frame. 'character' = an anchored/recurring character must appear recognizably (continuity reaction shots, beats about a person). 'none' = NO recurring character may appear in frame \u2014 a pure action/environment/object moment. The model always receives at least one reference, so 'none' is a promise about the frame's content, not a mechanical guarantee."
+            "description": "Which anchors the video-prompt stage lists as this shot's references[], and how it composes the frame. 'character' = an anchored/recurring character must appear recognizably (continuity reaction shots, beats about a person). 'none' = NO recurring character may appear in frame — a pure action/environment/object moment. The model always receives at least one reference, so 'none' is a promise about the frame's content, not a mechanical guarantee."
           },
           "scene": {
             "type": "integer",
@@ -121,12 +128,12 @@
             "type": "number",
             "minimum": 2,
             "maximum": 14,
-            "description": "Seconds this shot runs, 2-10 (working range 4-10). Hard 10s ceiling \u2014 the runner clamps and snaps to the 4n+1 frame grid at 24fps."
+            "description": "Seconds this shot runs, 2-10 (working range 4-10). Hard 10s ceiling — the runner clamps and snaps to the 4n+1 frame grid at 24fps."
           },
           "description": {
             "type": "string",
             "minLength": 10,
-            "description": "The ONE distinct ACTION/EVENT this shot shows, verb-first and concrete (e.g. 'a fist pounds three times on the iron door') \u2014 NOT a character standing or looking. Omit any character not yet introduced by the story. This is what the shot's video prompt is built from."
+            "description": "The ONE distinct ACTION/EVENT this shot shows, verb-first and concrete (e.g. 'a fist pounds three times on the iron door') — NOT a character standing or looking. Omit any character not yet introduced by the story. This is what the shot's video prompt is built from."
           },
           "cameraWork": {
             "type": "string",
@@ -151,7 +158,7 @@
               "moderate",
               "dynamic"
             ],
-            "description": "NOT USED in this bundle. Shot pacing is expressed through `duration` instead \u2014 a multi-stage physical beat earns 8-10s rather than extra keyframe guides."
+            "description": "NOT USED in this bundle. Shot pacing is expressed through `duration` instead — a multi-stage physical beat earns 8-10s rather than extra keyframe guides."
           },
           "keyframeCount": {
             "type": "integer",
@@ -161,7 +168,7 @@
           },
           "speakerOnScreen": {
             "type": "boolean",
-            "description": "NOT USED in this bundle \u2014 it existed to protect LTX lip-sync, and this film is silent."
+            "description": "NOT USED in this bundle — it existed to protect LTX lip-sync, and this film is silent."
           }
         }
       }
@@ -178,35 +185,35 @@
       "items": {
         "type": "string"
       },
-      "description": "Subset of `shots[].id` with characterPresence='character', in shot order. MUST exactly match. Computed for inspection/filtering only \u2014 every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
+      "description": "Subset of `shots[].id` with characterPresence='character', in shot order. MUST exactly match. Computed for inspection/filtering only — every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
     },
     "none_shot_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Subset of `shots[].id` with characterPresence='none', in shot order. MUST exactly match. Computed for inspection/filtering only \u2014 every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
+      "description": "Subset of `shots[].id` with characterPresence='none', in shot order. MUST exactly match. Computed for inspection/filtering only — every shot goes through the same Bernini renderer; the shot's video prompt is what enforces the 'none' exclusion."
     },
     "kf1_shot_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+      "description": "NOT USED in this bundle — retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
     },
     "kf2_shot_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+      "description": "NOT USED in this bundle — retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
     },
     "kf3_shot_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "NOT USED in this bundle \u2014 retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
+      "description": "NOT USED in this bundle — retained only because plan.assemble_keyframes emits it. There is no keyframe chain here: Bernini animates each shot directly from its reference anchors, so this stays empty."
     }
   }
 }
